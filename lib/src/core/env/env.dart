@@ -2,7 +2,7 @@ import 'package:envied/envied.dart';
 part 'env.g.dart';
 
 @Envied(path: '.env.staging')
-abstract class AppEnv{
+abstract class AppEnv {
   @EnviedField(varName: 'GOOGLE_CLIENT_ID')
 static const String googleClientId=_AppEnv.googleClientId;  
 
