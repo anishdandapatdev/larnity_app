@@ -1,5 +1,6 @@
 plugins {
     id("com.android.application")
+    id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -14,11 +15,6 @@ android {
         tasks.withType<JavaCompile> {
             options.compilerArgs.add("-Xlint:-deprecation")
             options.compilerArgs.add("-Xlint:-unchecked")
-        }
-    }
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
         }
     }
 
