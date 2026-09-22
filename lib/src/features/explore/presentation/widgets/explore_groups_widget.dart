@@ -209,8 +209,9 @@ class _ExploreGroupsWidgetState extends ConsumerState<ExploreGroupsWidget> {
   ) {
     final groupNotifier = ref.read(groupProvider.notifier);
     final isSelected =
-        groupState.selectedCategory == category ||
-        (category.name == 'All' && groupState.selectedCategory == null);
+        (category.name == 'All' && groupState.selectedCategory == null) ||
+        (groupState.selectedCategory?.name.toLowerCase() ==
+            category.name.toLowerCase());
 
     return Container(
       decoration: BoxDecoration(
@@ -253,16 +254,14 @@ class _ExploreGroupsWidgetState extends ConsumerState<ExploreGroupsWidget> {
           vertical: AppSizes.xxxs,
         ),
         onPressed: () {
-          // Select the category or clear selection for "All"
           if (category.name == 'All') {
-            // Clear the selected category when "All" is selected
-            // ignore: invalid_use_of_protected_member
-            groupNotifier.state = groupNotifier.state.copyWith(
-              selectedCategory: null,
-            );
+            groupNotifier.selectCategory(category: null);
           } else {
-            // Select the category and ensure "All" is deselected
-            groupNotifier.selectCategory(category: category);
+            if (isSelected) {
+              groupNotifier.selectCategory(category: null);
+            } else {
+              groupNotifier.selectCategory(category: category);
+            }
           }
         },
       ),

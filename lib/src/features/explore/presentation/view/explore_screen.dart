@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
-import 'package:larnity/src/core/extensions/screen_size_extension.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
-import 'package:larnity/src/features/explore/presentation/state/cubit/explore_group_provider.dart';
 import 'package:larnity/src/features/explore/presentation/widgets/explore_groups_widget.dart';
 import 'package:larnity/src/features/explore/presentation/widgets/group_card.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/group/data/models/group_model.dart';
-import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
+import 'package:larnity/src/core/extensions/slugify_extension.dart';
 
 class ExploreScreen extends ConsumerStatefulWidget {
   ExploreScreen({super.key});
@@ -39,29 +37,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Fetch groups for the current user when the screen loads
+    // Fetch explore / public groups when the screen loads
     Future.microtask(() {
-      final userId = ref.read(authProvider).user?.id ?? "";
-      if (userId.isNotEmpty) {
-        ref.read(groupProvider.notifier).getGroupsByUser(userId: userId);
-      }
+      ref.read(groupProvider.notifier).getPublicGroups();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Watch the explore group expanded state
-    final isExpanded = ref.watch(exploreGroupExpandedProvider);
-
-    // final packageState = ref.watch(packageProvider);
-    // final packageSubscriptionState = ref.watch(packageSubscriptionProvider);
     final groupState = ref.watch(groupProvider);
 
     // Get the search text
     final searchText = _searchController.text.toLowerCase();
 
-    // Start with all groups
-    List<GroupModel> filteredGroups = groupState.groups ?? [];
+    // Start with explore groups (fallback to all groups)
+    List<GroupModel> filteredGroups =
+        groupState.exploreGroups ?? groupState.groups ?? [];
 
     // Apply search filter first
     if (searchText.isNotEmpty) {
@@ -72,16 +63,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       }).toList();
     }
 
-    // Apply category filter - this should work with the actual group categories
+    // Apply category filter - works with both raw category name and slug
     if (groupState.selectedCategory != null &&
         groupState.selectedCategory!.name != 'All') {
-      final selectedCategoryName = groupState.selectedCategory!.name
-          .toLowerCase();
+      final selectedCategoryName =
+          groupState.selectedCategory!.name.toLowerCase();
+      final selectedCategorySlug = groupState.selectedCategory!.name.slugify();
       filteredGroups = filteredGroups
           .where(
-            (group) =>
-                group.category != null &&
-                group.category!.toLowerCase() == selectedCategoryName,
+            (group) {
+              if (group.category == null) return false;
+              final cat = group.category!.toLowerCase();
+              return cat == selectedCategoryName || cat == selectedCategorySlug;
+            },
           )
           .toList();
     }
@@ -102,62 +96,75 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         ),
         child: CustomScrollView(
           slivers: [
-            SliverAppBar(
-              expandedHeight: isExpanded
-                  ? 1.5.sh
-                  : 0.6.sh, // Even more height to ensure all content fits
-              floating: false,
-              pinned: true,
-              backgroundColor: Colors.transparent,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Stack(
-                  children: [
-                    // Spotlight effect behind the search bar
-                    Positioned(
-                      top: -50,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 200,
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            colors: [
-                              AppColors.primaryOrange.withValues(alpha: 0.1),
-                              Colors.transparent,
-                            ],
-                            center: Alignment.topCenter,
-                            radius: 0.8,
-                          ),
+            SliverToBoxAdapter(
+              child: Stack(
+                children: [
+                  // Spotlight effect behind the search bar
+                  Positioned(
+                    top: -50,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 200,
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          colors: [
+                            AppColors.primaryOrange.withValues(alpha: 0.1),
+                            Colors.transparent,
+                          ],
+                          center: Alignment.topCenter,
+                          radius: 0.8,
                         ),
                       ),
                     ),
-                    // Position the explore groups widget within the app bar
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSizes.xs,
-                          vertical: AppSizes.xs,
-                        ),
-                        child: ExploreGroupsWidget(
-                          searchController: _searchController,
-                        ),
-                      ),
+                  ),
+                  // Explore groups widget
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSizes.xs,
+                      vertical: AppSizes.xs,
                     ),
-                  ],
-                ),
+                    child: ExploreGroupsWidget(
+                      searchController: _searchController,
+                    ),
+                  ),
+                ],
               ),
             ),
             // Remove the separate SliverToBoxAdapter for ExploreGroupsWidget since it's now in the app bar
-            if (groupState.fetchState == AsyncState.loading)
-              SliverToBoxAdapter(
-                child: Center(child: CircularProgressIndicator()),
+            if (groupState.fetchState == AsyncState.loading && filteredGroups.isEmpty)
+              const SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(AppSizes.lg),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
               )
-            else if (groupState.fetchState == AsyncState.failure)
+            else if (groupState.fetchState == AsyncState.failure && filteredGroups.isEmpty)
               SliverToBoxAdapter(
-                child: Center(child: Text('Failed to load groups')),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSizes.lg),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          groupState.error ?? 'Failed to load groups',
+                          style: AppTextStyles.bodyText1(color: AppColors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                        AppSizes.xs.ph,
+                        ElevatedButton(
+                          onPressed: () {
+                            ref.read(groupProvider.notifier).getPublicGroups();
+                          },
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               )
             else if (filteredGroups.isEmpty)
               SliverToBoxAdapter(
