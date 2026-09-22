@@ -46,6 +46,28 @@ class ClassroomDataSource {
     }
   }
 
+  Future<Either<Failure, List<CourseModel>>> getAllCourses() async {
+    try {
+      final response = await supabaseClient
+          .from(SupabaseTable.course)
+          .select('*, Module(count)')
+          .order('created_at', ascending: false);
+
+      final courses = (response as List)
+          .map((e) => CourseModel.fromMap(e as Map<String, dynamic>))
+          .toList();
+
+      Log.info('Fetched ${courses.length} courses across all groups');
+      return Right(courses);
+    } on PostgrestException catch (e) {
+      Log.error('getAllCourses error: ${e.message}');
+      return Left(Failure(e.message));
+    } catch (e) {
+      Log.error('getAllCourses error: $e');
+      return Left(Failure(e.toString()));
+    }
+  }
+
   Future<Either<Failure, CourseModel>> getCourseDetail({
     required String courseId,
   }) async {
