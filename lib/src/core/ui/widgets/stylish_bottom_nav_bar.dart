@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
-import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 
@@ -20,7 +19,7 @@ class StylishBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
+        padding: const EdgeInsets.only(left: 14, right: 14, bottom: 12),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(32),
           child: BackdropFilter(
@@ -58,10 +57,16 @@ class StylishBottomNavBar extends StatelessWidget {
                     onTap: () => onTap(1),
                   ),
                   _NavBarItem(
-                    icon: HugeIconsStrokeRounded.userCircle,
-                    label: "Profile",
+                    icon: HugeIconsStrokeRounded.addCircle,
+                    label: "Create",
                     isSelected: currentIndex == 2,
                     onTap: () => onTap(2),
+                  ),
+                  _NavBarItem(
+                    icon: HugeIconsStrokeRounded.userCircle,
+                    label: "Profile",
+                    isSelected: currentIndex == 3,
+                    onTap: () => onTap(3),
                   ),
                 ],
               ),
@@ -95,7 +100,7 @@ class _NavBarItem extends StatelessWidget {
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOutCubic,
         padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? AppSizes.sm : AppSizes.xs,
+          horizontal: isSelected ? 12 : 8,
           vertical: 8,
         ),
         decoration: BoxDecoration(
@@ -118,10 +123,10 @@ class _NavBarItem extends StatelessWidget {
               color: isSelected
                   ? AppColors.primaryOrange
                   : AppColors.white.withValues(alpha: 0.55),
-              size: 22,
+              size: 20,
             ),
             if (isSelected) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
                 label,
                 style: AppTextStyles.caption1(
@@ -129,6 +134,7 @@ class _NavBarItem extends StatelessWidget {
                 ).copyWith(
                   fontWeight: AppFontWeights.bold,
                   letterSpacing: 0.3,
+                  fontSize: 12,
                 ),
               ),
             ],
