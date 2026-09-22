@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/constants/app_strings.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
+import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
@@ -46,13 +48,13 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
       }
 
       if (_selectedStatus != AppStrings.allStatus) {
-        if (_selectedStatus == AppStrings.active &&
+        if (_selectedStatus == AppStrings.registrationOpen &&
             c.status != 'REGISTRATION_OPEN') {
           return false;
         } else if (_selectedStatus == AppStrings.live && c.status != 'LIVE') {
           return false;
-        } else if (_selectedStatus == AppStrings.completed &&
-            c.status != 'COMPLETED') {
+        } else if (_selectedStatus == AppStrings.finished &&
+            c.status != 'FINISHED') {
           return false;
         }
       }
