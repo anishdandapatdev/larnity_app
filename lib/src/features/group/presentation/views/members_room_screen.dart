@@ -42,7 +42,19 @@ class _MembersRoomScreenState extends ConsumerState<MembersRoomScreen> {
 
     if (groupId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Members Room")),
+        appBar: AppBar(
+          title: const Text("Members Room"),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.goNamed(Routes.group);
+              }
+            },
+          ),
+        ),
         backgroundColor: AppColors.bgBlue,
         body: const Center(
           child: Text(
@@ -60,7 +72,19 @@ class _MembersRoomScreenState extends ConsumerState<MembersRoomScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bgBlue,
-      appBar: AppBar(title: const Text("Members Room")),
+      appBar: AppBar(
+        title: const Text("Members Room"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.group);
+            }
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.xs),
         child: Column(

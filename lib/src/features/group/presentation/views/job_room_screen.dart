@@ -11,6 +11,8 @@ import 'package:larnity/src/core/ui/widgets/app_button.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/group/presentation/provider/job_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/features/group/presentation/widgets/add_job.dart';
 import 'package:larnity/src/features/group/presentation/widgets/job_card.dart';
 
@@ -45,7 +47,19 @@ class _JobRoomScreenState extends ConsumerState<JobRoomScreen> {
     final jobs = jobState.jobs ?? [];
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Job Room")),
+      appBar: AppBar(
+        title: const Text("Job Room"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.group);
+            }
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),
         child: Column(

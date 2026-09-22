@@ -8,6 +8,8 @@ import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
 import 'package:larnity/src/features/group/presentation/provider/discussion_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/group/presentation/widgets/create_post.dart';
 
@@ -25,7 +27,19 @@ class _DiscussionRoomScreenState extends ConsumerState<DiscussionRoomScreen> {
     final groupId = ref.watch(groupProvider).group?.id;
     if (groupId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Discussion Room")),
+        appBar: AppBar(
+          title: const Text("Discussion Room"),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.goNamed(Routes.group);
+              }
+            },
+          ),
+        ),
         backgroundColor: AppColors.bgBlue,
         body: const Center(
           child: Text(
@@ -43,7 +57,19 @@ class _DiscussionRoomScreenState extends ConsumerState<DiscussionRoomScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bgBlue,
-      appBar: AppBar(title: const Text("Discussion Room")),
+      appBar: AppBar(
+        title: const Text("Discussion Room"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.group);
+            }
+          },
+        ),
+      ),
       body: Column(
         children: [
           Padding(
@@ -67,7 +93,10 @@ class _DiscussionRoomScreenState extends ConsumerState<DiscussionRoomScreen> {
                       context: context,
                       builder: (context) => Dialog(
                         backgroundColor: AppColors.iconColor,
-                        child: CreatePost(channelId: channelId),
+                        child: CreatePost(
+                          channelId: channelId,
+                          groupId: groupId,
+                        ),
                       ),
                     );
                   },

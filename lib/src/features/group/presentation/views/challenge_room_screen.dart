@@ -46,13 +46,13 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
       }
 
       if (_selectedStatus != AppStrings.allStatus) {
-        if (_selectedStatus == AppStrings.registrationOpen &&
+        if (_selectedStatus == AppStrings.active &&
             c.status != 'REGISTRATION_OPEN') {
           return false;
         } else if (_selectedStatus == AppStrings.live && c.status != 'LIVE') {
           return false;
-        } else if (_selectedStatus == AppStrings.finished &&
-            c.status != 'FINISHED') {
+        } else if (_selectedStatus == AppStrings.completed &&
+            c.status != 'COMPLETED') {
           return false;
         }
       }
@@ -75,9 +75,23 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
     final group = groupState.group;
 
     if (group == null || group.id == null) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.darkBg,
-        body: Center(
+        appBar: AppBar(
+          title: const Text("Challenges Room"),
+          backgroundColor: AppColors.darkBg,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.goNamed(Routes.group);
+              }
+            },
+          ),
+        ),
+        body: const Center(
           child: Text(
             "No group selected",
             style: TextStyle(color: Colors.white),
@@ -103,6 +117,16 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
       appBar: AppBar(
         title: const Text("Challenges Room"),
         backgroundColor: AppColors.darkBg,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.group);
+            }
+          },
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),

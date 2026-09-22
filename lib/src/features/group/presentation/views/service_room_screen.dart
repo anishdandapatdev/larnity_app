@@ -11,6 +11,8 @@ import 'package:larnity/src/core/ui/widgets/app_button.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/group/presentation/provider/product_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/features/group/presentation/widgets/add_service.dart';
 import 'package:larnity/src/features/group/presentation/widgets/service_card.dart';
 
@@ -44,7 +46,19 @@ class _ServiceRoomScreenState extends ConsumerState<ServiceRoomScreen> {
 
     if (groupId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Service Room")),
+        appBar: AppBar(
+          title: const Text("Service Room"),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.goNamed(Routes.group);
+              }
+            },
+          ),
+        ),
         backgroundColor: AppColors.bgBlue,
         body: const Center(
           child: Text(
@@ -60,7 +74,19 @@ class _ServiceRoomScreenState extends ConsumerState<ServiceRoomScreen> {
     final isLoading = state.fetchState == AsyncState.loading && services.isEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Service Room")),
+      appBar: AppBar(
+        title: const Text("Service Room"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.group);
+            }
+          },
+        ),
+      ),
       backgroundColor: AppColors.bgBlue,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),

@@ -11,6 +11,8 @@ import 'package:larnity/src/core/ui/widgets/app_button.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/group/presentation/provider/supporter_provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/features/group/presentation/widgets/new_supporter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -35,7 +37,19 @@ class _DoubtRoomScreenState extends ConsumerState<DoubtRoomScreen> {
 
     if (groupId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Doubt Room")),
+        appBar: AppBar(
+          title: const Text("Doubt Room"),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.goNamed(Routes.group);
+              }
+            },
+          ),
+        ),
         body: const Center(
           child: Text(
             "No group selected",
@@ -53,7 +67,19 @@ class _DoubtRoomScreenState extends ConsumerState<DoubtRoomScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bgBlue,
-      appBar: AppBar(title: const Text("Doubt Room")),
+      appBar: AppBar(
+        title: const Text("Doubt Room"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.group);
+            }
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.xs),
         child: Column(

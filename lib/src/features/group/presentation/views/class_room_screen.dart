@@ -27,7 +27,19 @@ class ClassRoomScreen extends ConsumerWidget {
 
     if (groupId == null || groupId.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Class Room")),
+        appBar: AppBar(
+          title: const Text("Class Room"),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.goNamed(Routes.group);
+              }
+            },
+          ),
+        ),
         backgroundColor: AppColors.bgBlue,
         body: const Center(
           child: Text(
@@ -43,7 +55,19 @@ class ClassRoomScreen extends ConsumerWidget {
     final courses = classroomState.courses ?? [];
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Class Room")),
+      appBar: AppBar(
+        title: const Text("Class Room"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.group);
+            }
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.xs),
         child: Column(

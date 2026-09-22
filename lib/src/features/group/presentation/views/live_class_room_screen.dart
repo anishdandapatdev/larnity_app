@@ -9,6 +9,8 @@ import 'package:larnity/src/core/extensions/screen_size_extension.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
+import 'package:go_router/go_router.dart';
+import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/features/group/presentation/widgets/add_class.dart';
 import 'package:larnity/src/features/group/presentation/widgets/view_event.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
@@ -47,7 +49,19 @@ class LiveClassRoomScreen extends ConsumerWidget {
 
     if (groupId == null || groupId.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Live Class Room")),
+        appBar: AppBar(
+          title: const Text("Live Class Room"),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.goNamed(Routes.group);
+              }
+            },
+          ),
+        ),
         backgroundColor: AppColors.bgBlue,
         body: const Center(
           child: Text(
@@ -62,7 +76,19 @@ class LiveClassRoomScreen extends ConsumerWidget {
     final isLoading = liveClassState.fetchState == AsyncState.loading;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Live Class Room")),
+      appBar: AppBar(
+        title: const Text("Live Class Room"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.group);
+            }
+          },
+        ),
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [

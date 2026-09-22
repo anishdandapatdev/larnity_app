@@ -16,7 +16,12 @@ import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
 
 class CreatePost extends ConsumerStatefulWidget {
   final String channelId;
-  const CreatePost({super.key, required this.channelId});
+  final String groupId;
+  const CreatePost({
+    super.key,
+    required this.channelId,
+    required this.groupId,
+  });
 
   @override
   ConsumerState<CreatePost> createState() => _CreatePostState();
@@ -137,7 +142,7 @@ class _CreatePostState extends ConsumerState<CreatePost> {
               }
 
               ref
-                  .read(discussionProvider(widget.channelId).notifier)
+                  .read(discussionProvider(widget.groupId).notifier)
                   .createPost(
                     post: PostModel(
                       channelId: widget.channelId,

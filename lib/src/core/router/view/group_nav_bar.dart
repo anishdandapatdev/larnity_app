@@ -34,23 +34,27 @@ class GroupNavBar extends ConsumerWidget {
     // Watch the group provider to get the list of groups
     final groupState = ref.watch(groupProvider);
     final groups = groupState.groups ?? [];
-    
+    final isGroupHome = navigationShell.currentIndex == 0;
+
     return Scaffold(
       key: _scaffoldKey,
-      appBar: AppBar(
-        title: Image.asset(AppAssets.images.logoWhite, width: 100),
-        centerTitle: false,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              Scaffold.of(context).openEndDrawer();
-            },
-          ),
-        ),
-        actions: [SizedBox.shrink()],
-      ),
-      endDrawer: Drawer(
+      appBar: isGroupHome
+          ? AppBar(
+              title: Image.asset(AppAssets.images.logoWhite, width: 100),
+              centerTitle: false,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    Scaffold.of(context).openEndDrawer();
+                  },
+                ),
+              ),
+              actions: const [SizedBox.shrink()],
+            )
+          : null,
+      endDrawer: isGroupHome
+          ? Drawer(
         child: Padding(
           padding: const EdgeInsets.all(AppSizes.xs),
           child: Column(
@@ -339,7 +343,8 @@ class GroupNavBar extends ConsumerWidget {
             ],
           ),
         ),
-      ),
+      )
+    : null,
       body: navigationShell,
       bottomNavigationBar: BottomAppBar(
         height: 60,
