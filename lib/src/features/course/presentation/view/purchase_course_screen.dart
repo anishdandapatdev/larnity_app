@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
+import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/features/group/data/datasource/classroom_datasource.dart';
@@ -88,6 +90,28 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bgBlue,
+      appBar: AppBar(
+        backgroundColor: AppColors.bgBlue,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.explore);
+            }
+          },
+        ),
+        title: const Text(
+          'Courses',
+          style: TextStyle(
+            color: AppColors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           color: AppColors.primaryOrange,

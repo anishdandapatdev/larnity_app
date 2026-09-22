@@ -65,10 +65,13 @@ class GroupDetailsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(selectedGroup.name),
         leading: IconButton(
-          icon: Icon(Icons.home),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            // Navigate back to the explore screen (home)
-            context.goNamed(Routes.explore);
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.explore);
+            }
           },
         ),
       ),
