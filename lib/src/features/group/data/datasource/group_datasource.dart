@@ -150,15 +150,53 @@ class GroupDataSource {
 
   Future<Either<Failure, List<GroupModel>>> getPublicGroups() async {
     try {
-      final response = await supabaseClient
-          .from('Group')
-          .select()
-          .order('created_at', ascending: false);
+      dynamic response;
+      try {
+        // Try fetching groups with related member count aggregation
+        response = await supabaseClient
+            .from('Group')
+            .select('*, Members(count)')
+            .order('created_at', ascending: false);
+      } catch (relError) {
+        Log.warning("select with Members(count) failed: $relError; trying basic select");
+        response = await supabaseClient
+            .from('Group')
+            .select()
+            .order('created_at', ascending: false);
+      }
+
+      if (response is List && response.isNotEmpty) {
+        final sample = response.first as Map;
+        Log.info("SUPABASE GROUP TABLE COLUMNS: ${sample.keys.toList()}");
+        Log.info("SUPABASE GROUP SAMPLE: $sample");
+      }
+
+      // Fetch member count aggregates from Members table as fallback
+      final memberCounts = <String, int>{};
+      try {
+        final membersRes = await supabaseClient
+            .from('Members')
+            .select('groupId');
+        Log.info("MEMBERS RES COUNT: ${(membersRes as List).length}");
+        for (var row in membersRes as List) {
+          final gId = row['groupId']?.toString();
+          if (gId != null && gId.isNotEmpty) {
+            memberCounts[gId] = (memberCounts[gId] ?? 0) + 1;
+          }
+        }
+      } catch (e) {
+        Log.warning("Could not fetch member counts from Members table: $e");
+      }
 
       final groups = <GroupModel>[];
-      for (var data in response as List) {
+      for (var data in response) {
         try {
-          final group = GroupModel.fromMap(data as Map<String, dynamic>);
+          final map = Map<String, dynamic>.from(data as Map);
+          final gId = map['id']?.toString();
+          if (gId != null && memberCounts.containsKey(gId) && !map.containsKey('memberCount')) {
+            map['memberCount'] = memberCounts[gId];
+          }
+          final group = GroupModel.fromMap(map);
           // Exclude suspended and private groups
           final isNotSuspended = group.isSuspended != true;
           final isNotPrivate = group.privacy != GroupPrivacy.PRIVATE;
@@ -169,6 +207,18 @@ class GroupDataSource {
           Log.error("Error parsing public group: $e");
         }
       }
+
+      // Sort by member count (popular / most joined first), then by newest
+      groups.sort((a, b) {
+        final countA = a.memberCount ?? 0;
+        final countB = b.memberCount ?? 0;
+        if (countA != countB) {
+          return countB.compareTo(countA); // Highest member count first
+        }
+        return (b.createdAt ?? DateTime.now()).compareTo(
+          a.createdAt ?? DateTime.now(),
+        );
+      });
 
       return Right(groups);
     } on PostgrestException catch (e) {

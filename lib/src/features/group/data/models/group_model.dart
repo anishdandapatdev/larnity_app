@@ -33,6 +33,7 @@ class GroupModel extends Equatable {
   final GroupStatus? status;
   final String? slug;
   final Map<String, dynamic>? landingSettings;
+  final int? memberCount;
 
   const GroupModel({
     this.id,
@@ -61,6 +62,7 @@ class GroupModel extends Equatable {
     this.status,
     this.slug,
     this.landingSettings,
+    this.memberCount,
   });
 
   GroupModel copyWith({
@@ -90,6 +92,7 @@ class GroupModel extends Equatable {
     GroupStatus? status,
     String? slug,
     Map<String, dynamic>? landingSettings,
+    int? memberCount,
   }) {
     return GroupModel(
       id: id ?? this.id,
@@ -120,6 +123,7 @@ class GroupModel extends Equatable {
       status: status ?? this.status,
       slug: slug ?? this.slug,
       landingSettings: landingSettings ?? this.landingSettings,
+      memberCount: memberCount ?? this.memberCount,
     );
   }
 
@@ -196,6 +200,25 @@ class GroupModel extends Equatable {
       landingSettings: map['landingSettings'] is Map<String, dynamic>
           ? map['landingSettings'] as Map<String, dynamic>
           : null,
+      memberCount: (map['memberCount'] as num?)?.toInt() ??
+          (map['member_count'] as num?)?.toInt() ??
+          (map['membersCount'] as num?)?.toInt() ??
+          (map['members_count'] as num?)?.toInt() ??
+          (map['totalMembers'] as num?)?.toInt() ??
+          (map['total_members'] as num?)?.toInt() ??
+          (map['Members'] is List &&
+                  (map['Members'] as List).isNotEmpty &&
+                  (map['Members'] as List).first is Map &&
+                  (map['Members'] as List).first.containsKey('count')
+              ? ((map['Members'] as List).first['count'] as num?)?.toInt()
+              : null) ??
+          (map['members'] is List
+              ? ((map['members'] as List).isNotEmpty &&
+                      (map['members'] as List).first is Map &&
+                      (map['members'] as List).first.containsKey('count')
+                  ? ((map['members'] as List).first['count'] as num?)?.toInt()
+                  : (map['members'] as List).length)
+              : (map['members'] as num?)?.toInt()),
     );
   }
 
@@ -233,6 +256,7 @@ class GroupModel extends Equatable {
     status,
     slug,
     landingSettings,
+    memberCount,
   ];
 
   @override
