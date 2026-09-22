@@ -86,7 +86,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       _buildGroupShellRoutes(),
       _buildCourseDetailScreenRoute(),
       _buildJobRoomScreenRoute(),
-      _buildProfileSettingsScreenRoute(),
     ],
   );
 });
