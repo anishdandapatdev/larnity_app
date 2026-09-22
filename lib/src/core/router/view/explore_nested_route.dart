@@ -13,6 +13,7 @@ import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_dropdown.dart';
+import 'package:larnity/src/core/ui/widgets/stylish_bottom_nav_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 
@@ -211,23 +212,32 @@ class ExploreNestedRoute extends ConsumerWidget {
                 color: AppColors.white,
               ),
               title: const Text('Home'),
-              onTap: () => _goBranch(0),
+              onTap: () {
+                Navigator.pop(context);
+                _goBranch(0);
+              },
             ),
             ListTile(
               leading: HugeIcon(
-                icon: HugeIconsStrokeRounded.compass01,
+                icon: HugeIconsStrokeRounded.book02,
                 color: AppColors.white,
               ),
-              title: const Text('Explore'),
-              onTap: () => _goBranch(1),
+              title: const Text('Purchase Courses'),
+              onTap: () {
+                Navigator.pop(context);
+                _goBranch(1);
+              },
             ),
             ListTile(
               leading: HugeIcon(
-                icon: HugeIconsStrokeRounded.bookmark01,
+                icon: HugeIconsStrokeRounded.userCircle,
                 color: AppColors.white,
               ),
-              title: const Text('Saved'),
-              onTap: () => _goBranch(2),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                _goBranch(2);
+              },
             ),
             ListTile(
               leading: HugeIcon(
@@ -235,15 +245,10 @@ class ExploreNestedRoute extends ConsumerWidget {
                 color: AppColors.white,
               ),
               title: const Text('My Learning'),
-              onTap: () => _goBranch(3),
-            ),
-            ListTile(
-              leading: HugeIcon(
-                icon: HugeIconsStrokeRounded.wallet01,
-                color: AppColors.white,
-              ),
-              title: const Text('Wallet'),
-              onTap: () => _goBranch(4),
+              onTap: () {
+                Navigator.pop(context);
+                _goBranch(3);
+              },
             ),
             ListTile(
               leading: HugeIcon(
@@ -251,7 +256,10 @@ class ExploreNestedRoute extends ConsumerWidget {
                 color: AppColors.white,
               ),
               title: const Text('Settings'),
-              onTap: () => context.push(Routes.profileSettings.p),
+              onTap: () {
+                Navigator.pop(context);
+                context.push(Routes.profileSettings.p);
+              },
             ),
             ListTile(
               leading: HugeIcon(
@@ -260,13 +268,19 @@ class ExploreNestedRoute extends ConsumerWidget {
               ),
               title: const Text('Log out'),
               onTap: () {
+                Navigator.pop(context);
                 ref.read(authProvider.notifier).signOut();
               },
             ),
           ],
         ),
       ),
+      extendBody: true,
       body: navigationShell,
+      bottomNavigationBar: StylishBottomNavBar(
+        currentIndex: navigationShell.currentIndex.clamp(0, 2),
+        onTap: _goBranch,
+      ),
     );
   }
 }

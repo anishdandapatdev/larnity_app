@@ -20,6 +20,7 @@ class Routes {
   static const String leaveReasonsSettings = 'leave-reasons-settings';
   static const String managerSettings = 'manager-settings';
   static const String profileSettings = 'profile-settings';
+  static const String purchaseCourse = 'purchase-course';
   static const String chatting = 'chatting';
   static const String choosePlan = 'choose-plan';
   static const String payment = 'payment';
@@ -58,56 +59,34 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       Log.info("Is Logged in: $isLoggedIn");
       // Log.info("Is Login: ${state.matchedLocation}");
-
-      // if (authState.loginState == AsyncState.initial ||
-      //     authState.loginState == AsyncState.loading ||
-      //     authState.signupState == AsyncState.initial ||
-      //     authState.signupState == AsyncState.loading) {
-      //   return null;
-      // }
-
-      // If user is logged in and trying to access login page, redirect to home
-      if (isLoggedIn && isExploreRoute) {
-        return Routes.explore.p;
-      }
-
-      // If user is not logged in and trying to access protected routes, redirect to login
+      // Log.info("Is Explore: ${state.matchedLocation == Routes.explore.p}");
+      // If the user is not logged in and not on the login route, redirect to login
       if (!isLoggedIn && isExploreRoute) {
         return Routes.auth.p;
       }
 
-      // No redirect needed
+      // If the user is logged in and on the login route, redirect to explore
+      // if (isLoggedIn && isAuthRoute) {
+      //   return Routes.explore.p;
+      // }
+
+      // No redirection needed
       return null;
     },
     initialLocation: Routes.explore.p,
     routes: [
+      GoRoute(
+        path: '/',
+        redirect: (context, state) => Routes.explore.p, // Redirect to explore
+      ),
       _buildExploreShellRoutes(),
-      _buildGroupShellRoutes(),
-      _buildNotificationScreenRoute(),
-      _buildProfileSettingsScreenRoute(),
       _buildAuthScreenRoute(),
-      _buildDiscussionRoomScreenRoute(),
-      _buildClassRoomScreenRoute(),
-      _buildLiveClassRoomScreenRoute(),
-      _buildEventRoomScreenRoute(),
-      _buildMembersRoomScreenRoute(),
-      _buildDoubtRoomScreenRoute(),
-      _buildChallengeRoomScreenRoute(),
-      _buildTreasureRoomScreenRoute(),
-      _buildProductRoomScreenRoute(),
-      _buildServiceRoomScreenRoute(),
-      _buildJobRoomScreenRoute(),
-      _buildCourseDetailScreenRoute(),
-      _buildSubscriptionSettingsScreenRoute(),
-      _buildPaymentSettingsScreenRoute(),
-      _buildOfferSettingsScreenRoute(),
-      _buildChallengeSettingsScreenRoute(),
-      _buildIntegrationSettingsScreenRoute(),
-      _buildPromoCodeSettingsScreenRoute(),
-      _buildMemberManagementSettingsScreenRoute(),
-      _buildLeaveReasonsSettingsScreenRoute(),
-      _buildManagerSettingsScreenRoute(),
       _buildForgotPasswordScreenRoute(),
+      _buildNotificationScreenRoute(),
+      _buildGroupShellRoutes(),
+      _buildCourseDetailScreenRoute(),
+      _buildJobRoomScreenRoute(),
+      _buildProfileSettingsScreenRoute(),
     ],
   );
 });
@@ -137,6 +116,27 @@ StatefulShellRoute _buildGroupShellRoutes() {
     },
     branches: [
       StatefulShellBranch(routes: [_buildGroupScreenRoute()]),
+      StatefulShellBranch(routes: [_buildDiscussionRoomScreenRoute()]),
+      StatefulShellBranch(routes: [_buildClassRoomScreenRoute()]),
+      StatefulShellBranch(routes: [_buildLiveClassRoomScreenRoute()]),
+      StatefulShellBranch(routes: [_buildEventRoomScreenRoute()]),
+      StatefulShellBranch(routes: [_buildMembersRoomScreenRoute()]),
+      StatefulShellBranch(routes: [_buildDoubtRoomScreenRoute()]),
+      StatefulShellBranch(routes: [_buildChallengeRoomScreenRoute()]),
+      StatefulShellBranch(routes: [_buildTreasureRoomScreenRoute()]),
+      StatefulShellBranch(routes: [_buildProductRoomScreenRoute()]),
+      StatefulShellBranch(routes: [_buildServiceRoomScreenRoute()]),
+      StatefulShellBranch(routes: [_buildSubscriptionSettingsScreenRoute()]),
+      StatefulShellBranch(routes: [_buildPaymentSettingsScreenRoute()]),
+      StatefulShellBranch(routes: [_buildOfferSettingsScreenRoute()]),
+      StatefulShellBranch(routes: [_buildChallengeSettingsScreenRoute()]),
+      StatefulShellBranch(routes: [_buildIntegrationSettingsScreenRoute()]),
+      StatefulShellBranch(routes: [_buildPromoCodeSettingsScreenRoute()]),
+      StatefulShellBranch(
+        routes: [_buildMemberManagementSettingsScreenRoute()],
+      ),
+      StatefulShellBranch(routes: [_buildLeaveReasonsSettingsScreenRoute()]),
+      StatefulShellBranch(routes: [_buildManagerSettingsScreenRoute()]),
       StatefulShellBranch(routes: [_buildGeneralSettingsScreenRoute()]),
       StatefulShellBranch(routes: [_buildChattingScreenRoute()]),
     ],
@@ -150,6 +150,8 @@ StatefulShellRoute _buildExploreShellRoutes() {
     },
     branches: [
       StatefulShellBranch(routes: [_buildExploreScreenRoute()]),
+      StatefulShellBranch(routes: [_buildPurchaseCourseScreenRoute()]),
+      StatefulShellBranch(routes: [_buildProfileSettingsScreenRoute()]),
       StatefulShellBranch(routes: [_buildPackageSubscriptionScreenRoute()]),
       StatefulShellBranch(routes: [_buildPackageScreenRoute()]),
       StatefulShellBranch(routes: [_buildPackageDetailsScreenRoute()]),
@@ -165,6 +167,14 @@ GoRoute _buildExploreScreenRoute() => GoRoute(
   path: Routes.explore.p,
   pageBuilder: _getDefaultPageBuilderByPlatform(
     childBuilder: (_, state) => ExploreScreen(),
+  ),
+);
+
+GoRoute _buildPurchaseCourseScreenRoute() => GoRoute(
+  name: Routes.purchaseCourse,
+  path: Routes.purchaseCourse.p,
+  pageBuilder: _getDefaultPageBuilderByPlatform(
+    childBuilder: (_, state) => const PurchaseCourseScreen(),
   ),
 );
 
