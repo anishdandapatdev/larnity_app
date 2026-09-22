@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:larnity/src/core/extensions/slugify_extension.dart';
-import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
@@ -158,28 +156,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bgBlue,
-      appBar: AppBar(
-        backgroundColor: AppColors.bgBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.white),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.goNamed(Routes.explore);
-            }
-          },
-        ),
-        title: const Text(
-          'Create Community',
-          style: TextStyle(
-            color: AppColors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
