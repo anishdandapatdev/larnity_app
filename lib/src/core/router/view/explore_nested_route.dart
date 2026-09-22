@@ -67,19 +67,22 @@ class ExploreNestedRoute extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isHome = navigationShell.currentIndex == 0;
+
     return Scaffold(
       key: _scaffoldKey,
-      appBar: AppBar(
-        title: Image.asset(AppAssets.images.logoWhite, width: 100),
-        centerTitle: false,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              Scaffold.of(context).openEndDrawer();
-            },
-          ),
-        ),
+      appBar: isHome
+          ? AppBar(
+              title: Image.asset(AppAssets.images.logoWhite, width: 100),
+              centerTitle: false,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    Scaffold.of(context).openEndDrawer();
+                  },
+                ),
+              ),
         actions: [
           GestureDetector(
             onTap: () {
@@ -163,10 +166,12 @@ class ExploreNestedRoute extends ConsumerWidget {
           ),
           AppSizes.xs.pw,
         ],
-      ),
-      endDrawer: Drawer(
-        child: ListView(
-          children: [
+      )
+    : null,
+      endDrawer: isHome
+          ? Drawer(
+              child: ListView(
+                children: [
             DrawerHeader(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSizes.xlg),
@@ -317,7 +322,8 @@ class ExploreNestedRoute extends ConsumerWidget {
             ),
           ],
         ),
-      ),
+      )
+    : null,
       extendBody: navigationShell.currentIndex <= 3,
       body: navigationShell,
       bottomNavigationBar: navigationShell.currentIndex <= 3
