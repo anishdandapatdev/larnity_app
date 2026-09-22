@@ -230,13 +230,24 @@ class ExploreNestedRoute extends ConsumerWidget {
             ),
             ListTile(
               leading: HugeIcon(
+                icon: HugeIconsStrokeRounded.addCircle,
+                color: AppColors.white,
+              ),
+              title: const Text('Create Community'),
+              onTap: () {
+                Navigator.pop(context);
+                _goBranch(2);
+              },
+            ),
+            ListTile(
+              leading: HugeIcon(
                 icon: HugeIconsStrokeRounded.userCircle,
                 color: AppColors.white,
               ),
               title: const Text('Profile'),
               onTap: () {
                 Navigator.pop(context);
-                _goBranch(2);
+                _goBranch(3);
               },
             ),
             ListTile(
@@ -247,7 +258,7 @@ class ExploreNestedRoute extends ConsumerWidget {
               title: const Text('My Learning'),
               onTap: () {
                 Navigator.pop(context);
-                _goBranch(3);
+                _goBranch(4);
               },
             ),
             ListTile(
@@ -278,7 +289,7 @@ class ExploreNestedRoute extends ConsumerWidget {
       extendBody: true,
       body: navigationShell,
       bottomNavigationBar: StylishBottomNavBar(
-        currentIndex: navigationShell.currentIndex.clamp(0, 2),
+        currentIndex: navigationShell.currentIndex.clamp(0, 3),
         onTap: _goBranch,
       ),
     );

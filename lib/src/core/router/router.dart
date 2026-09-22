@@ -49,5 +49,6 @@ import 'package:larnity/src/features/package_subscription/presentation/view/paym
 import 'package:larnity/src/features/package/presentation/view/package_screen.dart';
 import 'package:larnity/src/features/profile/presentation/view/profile_settings_screen.dart';
 import 'package:larnity/src/features/course/presentation/view/purchase_course_screen.dart';
+import 'package:larnity/src/features/group/presentation/views/create_group_screen.dart';
 
 part 'app_router.dart';
