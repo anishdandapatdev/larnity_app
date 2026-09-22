@@ -139,6 +139,7 @@ class PackageScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 60),
             ],
           ),
         ),

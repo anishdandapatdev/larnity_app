@@ -318,12 +318,14 @@ class ExploreNestedRoute extends ConsumerWidget {
           ],
         ),
       ),
-      extendBody: true,
+      extendBody: navigationShell.currentIndex <= 3,
       body: navigationShell,
-      bottomNavigationBar: StylishBottomNavBar(
-        currentIndex: navigationShell.currentIndex.clamp(0, 3),
-        onTap: (index) => _goBranch(context, ref, index),
-      ),
+      bottomNavigationBar: navigationShell.currentIndex <= 3
+          ? StylishBottomNavBar(
+              currentIndex: navigationShell.currentIndex.clamp(0, 3),
+              onTap: (index) => _goBranch(context, ref, index),
+            )
+          : null,
     );
   }
 }

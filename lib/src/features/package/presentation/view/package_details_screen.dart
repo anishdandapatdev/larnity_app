@@ -552,6 +552,7 @@ class _PackageDetailsScreenState extends ConsumerState<PackageDetailsScreen> {
                 ),
               ),
               AppSizes.xlg.ph,
+              const SizedBox(height: 60),
             ],
           ),
         ),
