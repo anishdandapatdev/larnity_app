@@ -15,7 +15,11 @@ import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_dropdown.dart';
 import 'package:larnity/src/core/ui/widgets/stylish_bottom_nav_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:larnity/src/core/utils/async_states.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
+import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
+import 'package:larnity/src/features/package/presentation/provider/package_provider.dart';
+import 'package:larnity/src/features/package_subscription/presentation/providers/package_subscription_provider.dart';
 
 class ExploreNestedRoute extends ConsumerWidget {
   ExploreNestedRoute({Key? key, required this.navigationShell})
@@ -26,7 +30,35 @@ class ExploreNestedRoute extends ConsumerWidget {
   final AppDropdownController _larnityDropdownController =
       AppDropdownController();
 
-  void _goBranch(int index) {
+  void _goBranch(BuildContext context, WidgetRef ref, int index) {
+    if (index == 2) {
+      // User tapped Create! Run the exact flow from "Create your own group"
+      final packageState = ref.read(packageProvider);
+      final packageSubscriptionState = ref.read(packageSubscriptionProvider);
+      final groupState = ref.read(groupProvider);
+      final authState = ref.read(authProvider);
+
+      final hasActivePackage =
+          packageState.state == AsyncState.success &&
+          packageSubscriptionState.state == AsyncState.success &&
+          packageSubscriptionState.activeSubscription != null;
+
+      final hasCreatedGroups =
+          groupState.fetchState == AsyncState.success &&
+          groupState.groups != null &&
+          groupState.groups!.isNotEmpty &&
+          groupState.groups!.any((group) => group.userId == authState.user?.id);
+
+      if (hasActivePackage && hasCreatedGroups) {
+        context.pushNamed(Routes.packageSubscription);
+      } else if (hasActivePackage) {
+        context.pushNamed(Routes.packageSubscription);
+      } else {
+        context.pushNamed(Routes.package);
+      }
+      return;
+    }
+
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
@@ -214,7 +246,7 @@ class ExploreNestedRoute extends ConsumerWidget {
               title: const Text('Home'),
               onTap: () {
                 Navigator.pop(context);
-                _goBranch(0);
+                _goBranch(context, ref, 0);
               },
             ),
             ListTile(
@@ -225,7 +257,7 @@ class ExploreNestedRoute extends ConsumerWidget {
               title: const Text('Purchase Courses'),
               onTap: () {
                 Navigator.pop(context);
-                _goBranch(1);
+                _goBranch(context, ref, 1);
               },
             ),
             ListTile(
@@ -236,7 +268,7 @@ class ExploreNestedRoute extends ConsumerWidget {
               title: const Text('Create Community'),
               onTap: () {
                 Navigator.pop(context);
-                _goBranch(2);
+                _goBranch(context, ref, 2);
               },
             ),
             ListTile(
@@ -247,7 +279,7 @@ class ExploreNestedRoute extends ConsumerWidget {
               title: const Text('Profile'),
               onTap: () {
                 Navigator.pop(context);
-                _goBranch(3);
+                _goBranch(context, ref, 3);
               },
             ),
             ListTile(
@@ -258,7 +290,7 @@ class ExploreNestedRoute extends ConsumerWidget {
               title: const Text('My Learning'),
               onTap: () {
                 Navigator.pop(context);
-                _goBranch(4);
+                _goBranch(context, ref, 4);
               },
             ),
             ListTile(
@@ -290,7 +322,7 @@ class ExploreNestedRoute extends ConsumerWidget {
       body: navigationShell,
       bottomNavigationBar: StylishBottomNavBar(
         currentIndex: navigationShell.currentIndex.clamp(0, 3),
-        onTap: _goBranch,
+        onTap: (index) => _goBranch(context, ref, index),
       ),
     );
   }
