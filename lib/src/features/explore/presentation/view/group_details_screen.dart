@@ -163,7 +163,10 @@ class GroupDetailsScreen extends ConsumerWidget {
                               color: AppColors.creamWhite,
                             ),
                             AppSizes.xxxs.pw,
-                            Text("1 Members", style: AppTextStyles.overLine()),
+                            Text(
+                              "${selectedGroup.memberCount ?? 0} Members",
+                              style: AppTextStyles.overLine(),
+                            ),
                           ],
                         ),
                         Row(

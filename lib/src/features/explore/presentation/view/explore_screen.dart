@@ -26,10 +26,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    setState(() {});
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -48,7 +54,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     final groupState = ref.watch(groupProvider);
 
     // Get the search text
-    final searchText = _searchController.text.toLowerCase();
+    final searchText = _searchController.text.trim().toLowerCase();
 
     // Start with explore groups (fallback to all groups)
     List<GroupModel> filteredGroups =
@@ -57,9 +63,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     // Apply search filter first
     if (searchText.isNotEmpty) {
       filteredGroups = filteredGroups.where((group) {
-        return group.name.toLowerCase().contains(searchText) ||
-            (group.description ?? '').toLowerCase().contains(searchText) ||
-            (group.category ?? '').toLowerCase().contains(searchText);
+        final name = group.name.toLowerCase();
+        final desc = (group.description ?? '').toLowerCase();
+        final cat = (group.category ?? '').toLowerCase();
+        final slug = (group.slug ?? '').toLowerCase();
+        return name.contains(searchText) ||
+            desc.contains(searchText) ||
+            cat.contains(searchText) ||
+            slug.contains(searchText);
       }).toList();
     }
 

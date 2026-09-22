@@ -28,7 +28,30 @@ class ExploreGroupsWidget extends ConsumerStatefulWidget {
 }
 
 class _ExploreGroupsWidgetState extends ConsumerState<ExploreGroupsWidget> {
-  bool _isExpanded = false;
+  @override
+  void initState() {
+    super.initState();
+    widget.searchController?.addListener(_onSearchChanged);
+  }
+
+  @override
+  void didUpdateWidget(ExploreGroupsWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.searchController != widget.searchController) {
+      oldWidget.searchController?.removeListener(_onSearchChanged);
+      widget.searchController?.addListener(_onSearchChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.searchController?.removeListener(_onSearchChanged);
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,58 +74,59 @@ class _ExploreGroupsWidgetState extends ConsumerState<ExploreGroupsWidget> {
         groupState.groups!.isNotEmpty &&
         groupState.groups!.any((group) => group.userId == authState.user?.id);
 
-    // Define primary and secondary categories
-    // Primary: All, Fitness, Business, Personal Development, Lifestyle & Habits (5 categories)
-    // Secondary: The rest (12 categories)
-    final primaryCategories = categories.take(5).toList();
-    final secondaryCategories = categories.skip(5).toList();
-
     return LayoutBuilder(
       builder: (context, constraints) {
         return Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
               height: AppSizes.lg,
             ), // Add top padding to account for app bar
-            Text(AppStrings.exploreGroups, style: AppTextStyles.headline1()),
-            SizedBox(height: AppSizes.xxs), // Reduced spacing
-            Text(
-              AppStrings.exploreGroupsDesc,
-              style: AppTextStyles.bodyText2(),
-              textAlign: TextAlign.center,
+            Center(
+              child: Text(
+                AppStrings.exploreGroups,
+                style: AppTextStyles.headline1(),
+              ),
             ),
-            SizedBox(height: AppSizes.xs), // Reduced spacing
-            AppButton(
-              isExpanded: false,
-              label: hasActivePackage && hasCreatedGroups
-                  ? "Manage your package"
-                  : "Create your own group",
-              labelStyle: AppTextStyles.button(),
-              bgColor: AppColors.white,
-              suffix: const Icon(Icons.arrow_forward),
-              onPressed: () {
-                if (hasActivePackage && hasCreatedGroups) {
-                  // Navigate to package subscription screen to manage package
-                  context.pushNamed(Routes.packageSubscription);
-                } else {
-                  // Navigate to package selection screen
-                  context.pushNamed(Routes.package);
-                }
-              },
-              radius: 32,
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSizes.lg,
-              ), // Reduced padding
+            SizedBox(height: AppSizes.xxs),
+            Center(
+              child: Text(
+                AppStrings.exploreGroupsDesc,
+                style: AppTextStyles.bodyText2(),
+                textAlign: TextAlign.center,
+              ),
             ),
-            SizedBox(height: AppSizes.lg), // Reduced spacing
-            // Simple narrow wide search bar
+            SizedBox(height: AppSizes.xs),
+            Center(
+              child: AppButton(
+                isExpanded: false,
+                label: hasActivePackage && hasCreatedGroups
+                    ? "Manage your package"
+                    : "Create your own group",
+                labelStyle: AppTextStyles.button(),
+                bgColor: AppColors.white,
+                suffix: const Icon(Icons.arrow_forward),
+                onPressed: () {
+                  if (hasActivePackage && hasCreatedGroups) {
+                    context.pushNamed(Routes.packageSubscription);
+                  } else {
+                    context.pushNamed(Routes.package);
+                  }
+                },
+                radius: 32,
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSizes.lg,
+                ),
+              ),
+            ),
+            SizedBox(height: AppSizes.lg),
+            // Search bar
             Container(
               width: double.infinity,
               height: 50,
-              padding: EdgeInsets.symmetric(
+              padding: const EdgeInsets.symmetric(
                 horizontal: 20,
-                // vertical: AppSizes.xs,
               ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppSizes.sm),
@@ -114,7 +138,7 @@ class _ExploreGroupsWidgetState extends ConsumerState<ExploreGroupsWidget> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.search, color: Colors.grey, size: 20),
+                  const Icon(Icons.search, color: Colors.grey, size: 20),
                   SizedBox(width: AppSizes.xs),
                   Expanded(
                     child: TextFormField(
@@ -129,69 +153,52 @@ class _ExploreGroupsWidgetState extends ConsumerState<ExploreGroupsWidget> {
                         contentPadding: EdgeInsets.zero,
                       ),
                       style: AppTextStyles.overLine(),
-                      onChanged: (value) {
-                        setState(() {});
-                      },
                     ),
                   ),
+                  if (widget.searchController != null &&
+                      widget.searchController!.text.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        widget.searchController!.clear();
+                      },
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: AppSizes.xxs),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.grey,
+                          size: 18,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
             SizedBox(height: AppSizes.lg),
-            // Enhanced category section
+            // Modern horizontal categories filter section
             Text(
               "Search by Categories",
               style: AppTextStyles.headline5(
                 color: AppColors.white,
               ).copyWith(fontWeight: AppFontWeights.bold),
             ),
-            SizedBox(height: AppSizes.md),
-            // Primary categories (always visible)
-            Wrap(
-              spacing: AppSizes.xs,
-              runSpacing: AppSizes.xs,
-              alignment: WrapAlignment.center,
-              children: primaryCategories
-                  .map((c) => _buildCategoryButton(context, ref, c, groupState))
-                  .toList(),
-            ),
-            // Secondary categories (visible when expanded)
-            if (_isExpanded) ...[
-              SizedBox(height: AppSizes.xs),
-              Wrap(
-                spacing: AppSizes.xs,
-                runSpacing: AppSizes.xs,
-                alignment: WrapAlignment.center,
-                children: secondaryCategories
-                    .map(
-                      (c) => _buildCategoryButton(context, ref, c, groupState),
-                    )
-                    .toList(),
-              ),
-            ],
-            SizedBox(height: AppSizes.xs),
-            // Show More/Less button
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _isExpanded = !_isExpanded;
-                });
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _isExpanded ? "Show Less" : "Show More",
-                    style: AppTextStyles.bodyText1(color: AppColors.white),
-                  ),
-                  Icon(
-                    _isExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: AppColors.white,
-                    size: 16,
-                  ),
-                ],
+            SizedBox(height: AppSizes.sm),
+            // Horizontal scrollable categories
+            SizedBox(
+              height: 42,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                itemCount: categories.length,
+                separatorBuilder: (_, _) => SizedBox(width: AppSizes.xs),
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  return _buildCategoryButton(
+                    context,
+                    ref,
+                    category,
+                    groupState,
+                  );
+                },
               ),
             ),
           ],
@@ -200,7 +207,7 @@ class _ExploreGroupsWidgetState extends ConsumerState<ExploreGroupsWidget> {
     );
   }
 
-  // Custom category button with enhanced styling
+  // Modern category chip button
   Widget _buildCategoryButton(
     BuildContext context,
     WidgetRef ref,
@@ -213,47 +220,11 @@ class _ExploreGroupsWidgetState extends ConsumerState<ExploreGroupsWidget> {
         (groupState.selectedCategory?.name.toLowerCase() ==
             category.name.toLowerCase());
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppSizes.xs),
-        boxShadow: [
-          if (isSelected)
-            BoxShadow(
-              color: AppColors.primaryOrange.withValues(alpha: 0.3),
-              blurRadius: 8,
-              spreadRadius: 1,
-            ),
-        ],
-      ),
-      child: AppButton(
-        isExpanded: false,
-        label: category.name,
-        labelStyle:
-            AppTextStyles.subtitle2(
-              color: isSelected ? AppColors.primaryOrange : AppColors.white,
-            ).copyWith(
-              fontWeight: isSelected
-                  ? AppFontWeights.bold
-                  : AppFontWeights.regular,
-            ),
-        bgColor: isSelected
-            ? AppColors.primaryOrange.withValues(alpha: 0.1)
-            : AppColors.darkBgContainer.withValues(alpha: 0.3),
-        borderColor: isSelected
-            ? AppColors.primaryOrange
-            : AppColors.borderBrown.withValues(alpha: 0.3),
-        borderWidth: isSelected ? 1.5 : 1.0,
-        prefix: HugeIcon(
-          icon: category.icon,
-          size: 18,
-          color: isSelected ? AppColors.primaryOrange : AppColors.white,
-        ),
-        radius: AppSizes.xs,
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSizes.sm,
-          vertical: AppSizes.xxxs,
-        ),
-        onPressed: () {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () {
           if (category.name == 'All') {
             groupNotifier.selectCategory(category: null);
           } else {
@@ -264,6 +235,56 @@ class _ExploreGroupsWidgetState extends ConsumerState<ExploreGroupsWidget> {
             }
           }
         },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primaryOrange.withValues(alpha: 0.15)
+                : AppColors.darkBgContainer.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primaryOrange
+                  : AppColors.borderBrown.withValues(alpha: 0.4),
+              width: isSelected ? 1.5 : 1.0,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.primaryOrange.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              HugeIcon(
+                icon: category.icon,
+                size: 16,
+                color: isSelected ? AppColors.primaryOrange : AppColors.white,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                category.name,
+                style: AppTextStyles.subtitle2(
+                  color: isSelected ? AppColors.primaryOrange : AppColors.white,
+                ).copyWith(
+                  fontWeight: isSelected
+                      ? AppFontWeights.bold
+                      : AppFontWeights.regular,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

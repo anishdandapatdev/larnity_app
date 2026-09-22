@@ -63,7 +63,7 @@ class GroupCard extends ConsumerWidget {
     final groupName = group?.name ?? "Untitled Group";
     final groupDescription = group?.description ?? "No description provided";
     final groupCategory = group?.category ?? "Uncategorized";
-    final memberCount = "0";
+    final memberCount = group?.memberCount != null ? "${group!.memberCount}" : "0";
 
     final bannerUrl = _resolveImageUrl(ref, group?.thumbnail) ??
         _resolveImageUrl(ref, group?.icon);
