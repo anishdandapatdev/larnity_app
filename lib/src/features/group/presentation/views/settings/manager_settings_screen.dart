@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
@@ -7,24 +8,42 @@ import 'package:larnity/src/core/extensions/extensions.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
-import 'package:larnity/src/core/ui/widgets/app_table.dart';
+import 'package:larnity/src/core/utils/async_states.dart';
+import 'package:larnity/src/core/utils/show_snackbar.dart';
+import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
+import 'package:larnity/src/features/group/presentation/provider/member_provider.dart';
 import 'package:larnity/src/features/group/presentation/widgets/settings/add_manager.dart';
 
-class ManagerSettingsScreen extends StatelessWidget {
-  ManagerSettingsScreen({super.key});
-
-  final List<Map<String, dynamic>> sampleData = [
-    {AppStrings.manager: 'Manager', AppStrings.status: true},
-  ];
+class ManagerSettingsScreen extends ConsumerWidget {
+  const ManagerSettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupId = ref.watch(groupProvider).group?.id;
+
+    if (groupId == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.darkBg,
+        body: Center(
+          child: Text("No group selected", style: TextStyle(color: Colors.white)),
+        ),
+      );
+    }
+
+    final memberState = ref.watch(memberProvider(groupId));
+    final managers = (memberState.members ?? [])
+        .where((m) =>
+            m.role.toUpperCase() == 'ADMIN' ||
+            m.role.toUpperCase() == 'MODERATOR')
+        .toList();
+    final isLoading = memberState.fetchState == AsyncState.loading && managers.isEmpty;
+
     return Scaffold(
+      backgroundColor: AppColors.darkBg,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
             AppSizes.xs.ph,
             Row(
@@ -39,92 +58,147 @@ class ManagerSettingsScreen extends StatelessWidget {
                         AppStrings.groupManagers,
                         style: AppTextStyles.headline2(color: AppColors.white),
                       ),
-
                       Text(
-                        AppStrings.allMembersDesc,
+                        "Admins and moderators who manage this community.",
                         style: AppTextStyles.overLine(),
                       ),
                     ],
                   ),
                 ),
-
                 AppButton(
                   isExpanded: false,
                   onPressed: () {
                     showDialog(
                       context: context,
-                      builder: (context) => AlertDialog(content: AddManager()),
+                      builder: (context) => AlertDialog(
+                        backgroundColor: AppColors.darkBgContainer,
+                        content: AddManager(groupId: groupId),
+                      ),
                     );
                   },
-                  prefix: HugeIcon(
+                  prefix: const HugeIcon(
                     icon: HugeIconsStrokeRounded.userAdd02,
                     color: AppColors.black,
                   ),
-                  label: AppStrings.addManager,
+                  label: "Assign Manager",
                   labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
-                  bgColor: AppColors.primaryOrange,
+                  bgColor: AppColors.white,
                   radius: AppSizes.xxxs,
                 ),
               ],
             ),
-            AppSizes.lg.ph,
+            AppSizes.sm.ph,
             Expanded(
-              child: AppTable(
-                columns: [
-                  TableColumn(
-                    title: AppStrings.manager,
-                    width: 160,
-                    cellBuilder: (index) => Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            sampleData[index][AppStrings.manager],
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+              child: Builder(
+                builder: (context) {
+                  if (isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (managers.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const HugeIcon(
+                            icon: HugeIconsStrokeRounded.userShield02,
+                            color: Colors.grey,
+                            size: 48,
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.copy, size: 16, color: Colors.grey),
-                      ],
-                    ),
-                  ),
-                  TableColumn(
-                    title: AppStrings.status,
-                    width: 80,
-                    cellBuilder: (index) => Switch(
-                      value: sampleData[index][AppStrings.status],
-                      onChanged: (value) {
-                        // Handle switch toggle
-                        debugPrint('Toggle status for row $index');
-                      },
-                      activeThumbColor: Colors.green,
-                    ),
-                  ),
-                  TableColumn(
-                    title: AppStrings.actions,
-                    width: 100,
-                    cellBuilder: (index) => ElevatedButton(
-                      onPressed: () {
-                        debugPrint('Delete row $index');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade600,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        minimumSize: Size.zero,
+                          AppSizes.xs.ph,
+                          Text(
+                            "No custom managers assigned yet",
+                            style: AppTextStyles.bodyText1(color: Colors.grey),
+                          ),
+                        ],
                       ),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(fontSize: 12, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-                rowCount: 0,
-                emptyWidget: Text(AppStrings.noPromoCode),
+                    );
+                  }
+
+                  return ListView.separated(
+                    itemCount: managers.length,
+                    separatorBuilder: (_, _) => AppSizes.xs.ph,
+                    itemBuilder: (context, index) {
+                      final manager = managers[index];
+                      final profile = manager.profile;
+                      final firstName = profile?['firstname'] ?? profile?['first_name'] ?? '';
+                      final lastName = profile?['lastname'] ?? profile?['last_name'] ?? '';
+                      final name = ('$firstName $lastName').trim().isNotEmpty
+                          ? ('$firstName $lastName').trim()
+                          : 'Manager ${manager.userId.substring(0, 6)}';
+                      final avatarUrl = profile?['avatar_url'] as String?;
+                      final role = manager.role.toUpperCase();
+
+                      return Container(
+                        padding: const EdgeInsets.all(AppSizes.xs),
+                        decoration: BoxDecoration(
+                          color: AppColors.bgBlue,
+                          border: Border.all(
+                            color: AppColors.skyBlue.withValues(alpha: 0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: AppColors.primaryOrange,
+                              backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                              child: avatarUrl == null
+                                  ? Text(
+                                      name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            AppSizes.xs.pw,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name,
+                                    style: AppTextStyles.subtitle1(color: Colors.white),
+                                  ),
+                                  Text(
+                                    role,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: role == 'ADMIN'
+                                          ? AppColors.primaryOrange
+                                          : Colors.purple,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: "Revoke manager role",
+                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                              onPressed: () {
+                                if (manager.id == null) return;
+                                ref.read(memberProvider(groupId).notifier).updateMemberRole(
+                                      memberId: manager.id!,
+                                      role: 'MEMBER',
+                                      successCallBack: () {
+                                        showInfoToast(content: "Revoked manager role for $name");
+                                      },
+                                      failureCallBack: (err) {
+                                        showErrorToast(content: err);
+                                      },
+                                    );
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],

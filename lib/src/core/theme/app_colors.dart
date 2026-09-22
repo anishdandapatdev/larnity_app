@@ -20,4 +20,7 @@ class AppColors {
   static const Color infoCardColor = Color(0xFF261B11);
   static const Color borderBrown = Color.fromARGB(255, 68, 61, 61);
   static const Color purple = Color(0xffA855F7);
+  static const Color lightGreen = Color(0xFF4FDE80);
+  static const Color grey600 = Color(0xFF94A3B8);
+  static const Color grey500 = Color(0xFF64748B);
 }

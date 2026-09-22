@@ -103,7 +103,28 @@ class ChallengeNotifier extends AutoDisposeFamilyNotifier<ChallengeState, String
     final result = await ds.registerForChallenge(challengeId: challengeId, userId: userId);
     result.fold(
       (f) => failureCallBack?.call(f.message),
-      (_) { fetchStats(); successCallBack?.call(); },
+      (_) {
+        fetchStats();
+        successCallBack?.call();
+      },
+    );
+  }
+
+  Future<void> createChallenge({
+    required ChallengeModel challenge,
+    void Function()? successCallBack,
+    void Function(String error)? failureCallBack,
+  }) async {
+    final ds = ref.read(challengeDataSourceProvider);
+    final result = await ds.createChallenge(challenge: challenge);
+    result.fold(
+      (f) => failureCallBack?.call(f.message),
+      (_) {
+        fetchChallenges();
+        fetchStats();
+        successCallBack?.call();
+      },
     );
   }
 }
+

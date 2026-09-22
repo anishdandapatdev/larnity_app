@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
@@ -7,25 +9,60 @@ import 'package:larnity/src/core/extensions/extensions.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
-import 'package:larnity/src/core/ui/widgets/app_table.dart';
+import 'package:larnity/src/core/utils/async_states.dart';
+import 'package:larnity/src/core/utils/show_snackbar.dart';
+import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
+import 'package:larnity/src/features/group/presentation/provider/promotion_provider.dart';
 import 'package:larnity/src/features/group/presentation/widgets/settings/create_promo_code.dart';
 
-class PromoCodeSettingsScreen extends StatelessWidget {
-  PromoCodeSettingsScreen({super.key});
+class PromoCodeSettingsScreen extends ConsumerStatefulWidget {
+  const PromoCodeSettingsScreen({super.key});
 
-  final List<Map<String, dynamic>> sampleData = [
-    {
-      'promoCode': '9Z4377BB',
-      'planType': 'MONTHLY',
-      'discount': 10,
-      'usage': '0/5',
-      'status': true,
-    },
-  ];
+  @override
+  ConsumerState<PromoCodeSettingsScreen> createState() =>
+      _PromoCodeSettingsScreenState();
+}
+
+class _PromoCodeSettingsScreenState
+    extends ConsumerState<PromoCodeSettingsScreen> {
+  String? _initializedGroupId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _fetchPromotions();
+  }
+
+  void _fetchPromotions() {
+    final groupId = ref.read(groupProvider).group?.id;
+    if (groupId != null && groupId != _initializedGroupId) {
+      _initializedGroupId = groupId;
+      Future.microtask(() {
+        ref.read(promotionProvider.notifier).getPromotionsByGroup(groupld: groupId);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final group = ref.watch(groupProvider).group;
+    if (group == null || group.id == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.darkBg,
+        body: Center(
+          child: Text("No group selected", style: TextStyle(color: Colors.white)),
+        ),
+      );
+    }
+
+    final promotionState = ref.watch(promotionProvider);
+    final promotions = (promotionState.promotions ?? [])
+        .where((p) => p.groupld == group.id)
+        .toList();
+    final isLoading = promotionState.state == AsyncState.loading && promotions.isEmpty;
+
     return Scaffold(
+      backgroundColor: AppColors.darkBg,
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.xs),
         child: Column(
@@ -39,17 +76,18 @@ class PromoCodeSettingsScreen extends StatelessWidget {
                   AppStrings.promoCodes,
                   style: AppTextStyles.headline2(color: AppColors.white),
                 ),
-
                 AppButton(
                   isExpanded: false,
                   onPressed: () {
                     showDialog(
                       context: context,
-                      builder: (context) =>
-                          AlertDialog(content: CreatePromoCode()),
+                      builder: (context) => AlertDialog(
+                        backgroundColor: AppColors.darkBgContainer,
+                        content: CreatePromoCode(groupId: group.id!),
+                      ),
                     );
                   },
-                  prefix: HugeIcon(
+                  prefix: const HugeIcon(
                     icon: HugeIconsStrokeRounded.addCircle,
                     color: AppColors.black,
                   ),
@@ -62,86 +100,124 @@ class PromoCodeSettingsScreen extends StatelessWidget {
             ),
             AppSizes.xs.ph,
             Expanded(
-              child: AppTable(
-                columns: [
-                  TableColumn(
-                    title: 'Promo Code',
-                    width: 140,
-                    cellBuilder: (index) => Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            sampleData[index]['promoCode'],
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+              child: Builder(
+                builder: (context) {
+                  if (isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (promotions.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const HugeIcon(
+                            icon: HugeIconsStrokeRounded.ticket03,
+                            color: Colors.grey,
+                            size: 48,
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.copy, size: 16, color: Colors.grey),
-                      ],
-                    ),
-                  ),
-                  TableColumn(
-                    title: 'Plan Type',
-                    width: 120,
-                    cellBuilder: (index) => Text(
-                      sampleData[index]['planType'],
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                  TableColumn(
-                    title: 'Discount',
-                    width: 100,
-                    cellBuilder: (index) => Text(
-                      '${sampleData[index]['discount']}%',
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  TableColumn(
-                    title: 'Usage',
-                    width: 80,
-                    cellBuilder: (index) => Text(
-                      sampleData[index]['usage'],
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                  TableColumn(
-                    title: 'Status',
-                    width: 80,
-                    cellBuilder: (index) => Switch(
-                      value: sampleData[index]['status'],
-                      onChanged: (value) {
-                        // Handle switch toggle
-                        debugPrint('Toggle status for row $index');
-                      },
-                      activeThumbColor: Colors.green,
-                    ),
-                  ),
-                  TableColumn(
-                    title: 'Actions',
-                    width: 100,
-                    cellBuilder: (index) => ElevatedButton(
-                      onPressed: () {
-                        debugPrint('Delete row $index');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade600,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        minimumSize: Size.zero,
+                          AppSizes.xs.ph,
+                          Text(
+                            AppStrings.noPromoCode,
+                            style: AppTextStyles.bodyText1(color: Colors.grey),
+                          ),
+                        ],
                       ),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(fontSize: 12, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-                rowCount: 0,
-                emptyWidget: Text(AppStrings.noPromoCode),
+                    );
+                  }
+
+                  return ListView.separated(
+                    itemCount: promotions.length,
+                    separatorBuilder: (_, _) => AppSizes.xs.ph,
+                    itemBuilder: (context, index) {
+                      final promo = promotions[index];
+                      return Container(
+                        padding: const EdgeInsets.all(AppSizes.xs),
+                        decoration: BoxDecoration(
+                          color: AppColors.bgBlue,
+                          border: Border.all(
+                            color: AppColors.skyBlue.withValues(alpha: 0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(AppSizes.xs),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryOrange.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                              ),
+                              child: const HugeIcon(
+                                icon: HugeIconsStrokeRounded.ticket03,
+                                color: AppColors.primaryOrange,
+                              ),
+                            ),
+                            AppSizes.xs.pw,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        promo.promoCodeld,
+                                        style: AppTextStyles.headline4(
+                                          color: AppColors.white,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.copy,
+                                          size: 16,
+                                          color: Colors.grey,
+                                        ),
+                                        onPressed: () {
+                                          Clipboard.setData(
+                                            ClipboardData(text: promo.promoCodeld),
+                                          );
+                                          showInfoToast(
+                                            content: 'Code copied to clipboard!',
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    promo.title,
+                                    style: AppTextStyles.caption(
+                                      color: AppColors.skyBlue,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSizes.xs,
+                                vertical: AppSizes.xxs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: promo.isActive
+                                    ? Colors.green.withValues(alpha: 0.2)
+                                    : Colors.red.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                              ),
+                              child: Text(
+                                promo.isActive ? "ACTIVE" : "INACTIVE",
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: promo.isActive ? Colors.green : Colors.red,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],

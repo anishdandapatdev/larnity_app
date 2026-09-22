@@ -81,6 +81,9 @@ class AppTextStyles {
     ).copyWith(fontSize: 12, fontWeight: AppFontWeights.bold);
   }
 
+  /// 12 700
+  static TextStyle caption1({Color? color}) => caption(color: color);
+
   /// 12 600
   static TextStyle caption2({Color? color}) {
     return _baseTextStyle(

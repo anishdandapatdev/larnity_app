@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
@@ -7,25 +8,34 @@ import 'package:larnity/src/core/extensions/extensions.dart';
 import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
+import 'package:larnity/src/features/group/data/models/group_model.dart';
+import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 
-class GroupHomeScreen extends StatefulWidget {
+class GroupHomeScreen extends ConsumerStatefulWidget {
   const GroupHomeScreen({super.key});
 
   @override
-  State<GroupHomeScreen> createState() => _GroupHomeScreenState();
+  ConsumerState<GroupHomeScreen> createState() => _GroupHomeScreenState();
 }
 
-class _GroupHomeScreenState extends State<GroupHomeScreen> {
-  bool _showOnboarding = true;
+class _GroupHomeScreenState extends ConsumerState<GroupHomeScreen> {
+  bool _dismissedOnboarding = false;
 
-  Widget _buildRoomButton(BuildContext context, String title, dynamic icon, String routeName) {
+  Widget _buildRoomButton(
+    BuildContext context,
+    String title,
+    dynamic icon,
+    String routeName,
+  ) {
     return InkWell(
       onTap: () => context.pushNamed(routeName),
       borderRadius: BorderRadius.circular(AppSizes.xxxs),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.black.withValues(alpha: 0.5),
-          border: Border.all(color: AppColors.primaryOrange.withValues(alpha: 0.5)),
+          border: Border.all(
+            color: AppColors.primaryOrange.withValues(alpha: 0.5),
+          ),
           borderRadius: BorderRadius.circular(AppSizes.xxxs),
         ),
         child: Column(
@@ -46,16 +56,100 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final groupState = ref.watch(groupProvider);
+    final group = groupState.group;
+
+    final isApproved = group?.status == GroupStatus.APPROVED;
+    final showOnboarding = !_dismissedOnboarding && !isApproved;
+
+    final visibility = group?.landingSettings?['tabVisibility'] as Map?;
+
+    final allRooms = [
+      {
+        'key': 'discussion',
+        'title': 'Discussion Room',
+        'icon': HugeIconsStrokeRounded.home03,
+        'route': Routes.discussionRoom,
+      },
+      {
+        'key': 'courses',
+        'title': 'Class Room',
+        'icon': HugeIconsStrokeRounded.geometricShapes01,
+        'route': Routes.classRoom,
+      },
+      {
+        'key': 'stage',
+        'title': 'Live Class',
+        'icon': HugeIconsStrokeRounded.computerVideo,
+        'route': Routes.liveClassRoom,
+      },
+      {
+        'key': 'events',
+        'title': 'Events Room',
+        'icon': HugeIconsStrokeRounded.calendar03,
+        'route': Routes.eventRoom,
+      },
+      {
+        'key': 'members',
+        'title': 'Members Room',
+        'icon': HugeIconsStrokeRounded.userMultiple,
+        'route': Routes.membersRoom,
+      },
+      {
+        'key': 'resources',
+        'title': 'Doubt Room',
+        'icon': HugeIconsStrokeRounded.sourceCodeSquare,
+        'route': Routes.doubtRoom,
+      },
+      {
+        'key': 'challenges',
+        'title': 'Challenges Room',
+        'icon': HugeIconsStrokeRounded.adventure,
+        'route': Routes.challengeRoom,
+      },
+      {
+        'key': 'products',
+        'title': 'Treasure Room',
+        'icon': HugeIconsStrokeRounded.notebook02,
+        'route': Routes.treasureRoom,
+      },
+      {
+        'key': 'products',
+        'title': 'Product Room',
+        'icon': HugeIconsStrokeRounded.shoppingBag01,
+        'route': Routes.productRoom,
+      },
+      {
+        'key': 'jobs',
+        'title': 'Service Room',
+        'icon': HugeIconsStrokeRounded.documentValidation,
+        'route': Routes.serviceRoom,
+      },
+      {
+        'key': 'jobs',
+        'title': 'Job Room',
+        'icon': HugeIconsStrokeRounded.id,
+        'route': Routes.jobRoom,
+      },
+    ];
+
+    final visibleRooms = allRooms.where((r) {
+      if (visibility == null) return true;
+      final key = r['key'] as String;
+      return visibility[key] != false;
+    }).toList();
+
     return Scaffold(
+      backgroundColor: AppColors.darkBg,
       body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSizes.xs),
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),
         child: Column(
           children: [
             AppSizes.xs.ph,
-            if (_showOnboarding)
+            if (showOnboarding)
               Container(
-                padding: EdgeInsets.all(AppSizes.xs),
-                margin: EdgeInsets.only(bottom: AppSizes.xs),
+                padding: const EdgeInsets.all(AppSizes.xs),
+                margin: const EdgeInsets.only(bottom: AppSizes.xs),
                 decoration: BoxDecoration(
                   color: AppColors.infoCardColor,
                   border: Border.all(
@@ -69,7 +163,7 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        HugeIcon(
+                        const HugeIcon(
                           icon: HugeIconsStrokeRounded.informationDiamond,
                           color: AppColors.primaryOrange,
                         ),
@@ -96,10 +190,10 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
                         IconButton(
                           onPressed: () {
                             setState(() {
-                              _showOnboarding = false;
+                              _dismissedOnboarding = true;
                             });
                           },
-                          icon: HugeIcon(
+                          icon: const HugeIcon(
                             icon: HugeIconsStrokeRounded.cancel01,
                             color: AppColors.primaryOrange,
                           ),
@@ -130,20 +224,15 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
                 crossAxisCount: 3,
                 crossAxisSpacing: AppSizes.xs,
                 mainAxisSpacing: AppSizes.xs,
-                padding: EdgeInsets.only(bottom: AppSizes.lg),
-                children: [
-                  _buildRoomButton(context, "Discussion Room", HugeIconsStrokeRounded.home03, Routes.discussionRoom),
-                  _buildRoomButton(context, "Class Room", HugeIconsStrokeRounded.geometricShapes01, Routes.classRoom),
-                  _buildRoomButton(context, "Live Class", HugeIconsStrokeRounded.computerVideo, Routes.liveClassRoom),
-                  _buildRoomButton(context, "Events Room", HugeIconsStrokeRounded.calendar03, Routes.eventRoom),
-                  _buildRoomButton(context, "Members Room", HugeIconsStrokeRounded.userMultiple, Routes.membersRoom),
-                  _buildRoomButton(context, "Doubt Room", HugeIconsStrokeRounded.sourceCodeSquare, Routes.doubtRoom),
-                  _buildRoomButton(context, "Challenges Room", HugeIconsStrokeRounded.adventure, Routes.challengeRoom),
-                  _buildRoomButton(context, "Treasure Room", HugeIconsStrokeRounded.notebook02, Routes.treasureRoom),
-                  _buildRoomButton(context, "Product Room", HugeIconsStrokeRounded.shoppingBag01, Routes.productRoom),
-                  _buildRoomButton(context, "Service Room", HugeIconsStrokeRounded.documentValidation, Routes.serviceRoom),
-                  _buildRoomButton(context, "Job Room", HugeIconsStrokeRounded.id, Routes.jobRoom),
-                ],
+                padding: const EdgeInsets.only(bottom: AppSizes.lg),
+                children: visibleRooms.map((room) {
+                  return _buildRoomButton(
+                    context,
+                    room['title'] as String,
+                    room['icon'],
+                    room['route'] as String,
+                  );
+                }).toList(),
               ),
             ),
           ],
@@ -152,3 +241,4 @@ class _GroupHomeScreenState extends State<GroupHomeScreen> {
     );
   }
 }
+

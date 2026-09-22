@@ -89,6 +89,8 @@ class PackageScreen extends ConsumerWidget {
                                     ? "${package.freeTrialDays}"
                                     : "month",
                                 price: package.monthlyPrice.toString(),
+                                fakePrice: package.fakePrice?.toString(),
+                                features: package.featureList,
                                 buttonLabel:
                                     packageSubscriptionState
                                             .activeSubscription

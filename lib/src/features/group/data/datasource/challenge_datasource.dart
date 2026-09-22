@@ -56,6 +56,28 @@ class ChallengeDataSource {
     }
   }
 
+  /// Create a new challenge.
+  Future<Either<Failure, ChallengeModel>> createChallenge({
+    required ChallengeModel challenge,
+  }) async {
+    try {
+      final response = await supabaseClient
+          .from(SupabaseTable.challenges)
+          .insert(challenge.toMap())
+          .select()
+          .single();
+
+      Log.info('Created challenge ${response['id']}');
+      return Right(ChallengeModel.fromMap(response));
+    } on PostgrestException catch (e) {
+      Log.error('createChallenge error: ${e.message}');
+      return Left(Failure(e.message));
+    } catch (e) {
+      Log.error('createChallenge error: $e');
+      return Left(Failure(e.toString()));
+    }
+  }
+
   /// Get challenge detail with days.
   Future<Either<Failure, ChallengeModel>> getChallengeDetail({
     required String challengeId,

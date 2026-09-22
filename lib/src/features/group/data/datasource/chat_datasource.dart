@@ -43,6 +43,24 @@ class ChatDataSource {
     }
   }
 
+  /// Create a new channel (or default channel).
+  Future<Either<Failure, ChannelModel>> createChannel({
+    required ChannelModel channel,
+  }) async {
+    try {
+      final response = await supabaseClient
+          .from(SupabaseTable.channel)
+          .insert(channel.toMap())
+          .select()
+          .single();
+      return Right(ChannelModel.fromMap(response));
+    } on PostgrestException catch (e) {
+      return Left(Failure(e.message));
+    } catch (e) {
+      return Left(Failure(e.toString()));
+    }
+  }
+
   /// Get messages for a channel (newest first for pagination).
   Future<Either<Failure, List<MessageModel>>> getMessages({
     required String channelId,

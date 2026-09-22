@@ -1,19 +1,155 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/constants/app_strings.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
 import 'package:larnity/src/core/extensions/screen_size_extension.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_storage_service.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
 import 'package:larnity/src/core/ui/widgets/app_dropdown.dart';
-import 'package:larnity/src/core/ui/widgets/app_dropdown_slash_editor.dart';
+import 'package:larnity/src/core/utils/show_snackbar.dart';
+import 'package:larnity/src/features/group/data/models/group_model.dart';
+import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 
-class GeneralSettingsScreen extends StatelessWidget {
+class GeneralSettingsScreen extends ConsumerStatefulWidget {
   const GeneralSettingsScreen({super.key});
 
   @override
+  ConsumerState<GeneralSettingsScreen> createState() =>
+      _GeneralSettingsScreenState();
+}
+
+class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _slugController;
+  late final TextEditingController _descController;
+  File? _pickedThumbnail;
+  bool _isLoading = false;
+  GroupPrivacy _privacy = GroupPrivacy.PUBLIC;
+  bool _isNameShown = true;
+  String? _initializedGroupId;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _slugController = TextEditingController();
+    _descController = TextEditingController();
+  }
+
+  void _syncWithGroup(GroupModel? group) {
+    if (group == null || group.id == _initializedGroupId) return;
+    _initializedGroupId = group.id;
+    _nameController.text = group.name;
+    _slugController.text = group.slug ?? '';
+    _descController.text = group.description ?? '';
+    _privacy = group.privacy ?? GroupPrivacy.PUBLIC;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _slugController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+      if (picked != null) {
+        setState(() {
+          _pickedThumbnail = File(picked.path);
+        });
+      }
+    } catch (e) {
+      showErrorToast(content: "Failed to pick image: $e");
+    }
+  }
+
+  Future<void> _saveChanges(GroupModel currentGroup) async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      showErrorToast(content: "Group name cannot be empty");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    String? thumbnailUrl = currentGroup.thumbnail;
+    if (_pickedThumbnail != null) {
+      try {
+        final storage = ref.read(storageServiceProvider);
+        final fileExt = _pickedThumbnail!.path.split('.').last.toLowerCase();
+        final path =
+            'groups/${currentGroup.id}/thumbnail_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+        thumbnailUrl = await storage.uploadFile(
+          bucket: StorageBucket.groupImages,
+          path: path,
+          file: _pickedThumbnail!,
+        );
+      } catch (e) {
+        showErrorToast(content: "Failed to upload thumbnail: $e");
+        setState(() => _isLoading = false);
+        return;
+      }
+    }
+
+    final updatedGroup = currentGroup.copyWith(
+      name: name,
+      slug: _slugController.text.trim().isEmpty ? null : _slugController.text.trim(),
+      description: _descController.text.trim(),
+      privacy: _privacy,
+      thumbnail: thumbnailUrl,
+      updatedAt: DateTime.now(),
+    );
+
+    ref.read(groupProvider.notifier).updateGroup(
+          group: updatedGroup,
+          successCallBack: () {
+            if (mounted) {
+              setState(() => _isLoading = false);
+              showInfoToast(content: "Group settings saved successfully!");
+            }
+          },
+          failureCallBack: (err) {
+            if (mounted) {
+              setState(() => _isLoading = false);
+              showErrorToast(content: err);
+            }
+          },
+        );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final groupState = ref.watch(groupProvider);
+    final group = groupState.group;
+
+    if (group == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.darkBg,
+        body: Center(
+          child: Text(
+            "No group selected",
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    _syncWithGroup(group);
+    final groupUrl = "https://www.larnity.com/group/${group.slug ?? group.id}";
+
     return Scaffold(
       backgroundColor: AppColors.darkBg,
       body: Padding(
@@ -30,8 +166,9 @@ class GeneralSettingsScreen extends StatelessWidget {
               AppSizes.xxxs.ph,
               Text(AppStrings.groupSettingsDesc),
               AppSizes.xxxlg.ph,
+              // Group Share Link
               Container(
-                padding: EdgeInsets.symmetric(
+                padding: const EdgeInsets.symmetric(
                   horizontal: AppSizes.xxs,
                   vertical: AppSizes.xxxs,
                 ),
@@ -45,20 +182,21 @@ class GeneralSettingsScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        "https://www.larnity.com/about/canva-capsul-class",
+                        groupUrl,
                         style: AppTextStyles.overLine(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     AppSizes.xs.pw,
-
                     AppButton(
                       height: 40,
                       isExpanded: false,
-                      onPressed: () {},
-                      label: "Share",
-
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: groupUrl));
+                        showInfoToast(content: "Link copied to clipboard!");
+                      },
+                      label: "Copy Link",
                       labelStyle: AppTextStyles.bodyText2(
                         color: AppColors.white,
                       ),
@@ -80,11 +218,37 @@ class GeneralSettingsScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Container(
-                      height: 0.2.sh,
-
+                      height: 0.22.sh,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryOrange,
+                        color: AppColors.darkBgContainer,
                         borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                        border: Border.all(
+                          color: AppColors.skyBlue.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Builder(
+                        builder: (_) {
+                          if (_pickedThumbnail != null) {
+                            return Image.file(_pickedThumbnail!, fit: BoxFit.cover);
+                          } else if (group.thumbnail != null &&
+                              group.thumbnail!.isNotEmpty) {
+                            return Image.network(
+                              group.thumbnail!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const Center(
+                                child: Icon(Icons.broken_image, color: Colors.grey),
+                              ),
+                            );
+                          }
+                          return const Center(
+                            child: Icon(
+                              Icons.image_outlined,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -92,7 +256,7 @@ class GeneralSettingsScreen extends StatelessWidget {
               ),
               AppSizes.xxlg.ph,
               AppButton(
-                onPressed: () {},
+                onPressed: _pickImage,
                 bgColor: AppColors.darkBgContainer,
                 label: AppStrings.changeThumbnail,
                 labelStyle: AppTextStyles.button(color: AppColors.white),
@@ -105,7 +269,7 @@ class GeneralSettingsScreen extends StatelessWidget {
               AppSizes.xxxs.ph,
               AppDropdown(
                 button: Container(
-                  padding: EdgeInsets.all(AppSizes.xs),
+                  padding: const EdgeInsets.all(AppSizes.xs),
                   decoration: BoxDecoration(
                     border: Border.all(
                       color: AppColors.skyBlue.withValues(alpha: 0.5),
@@ -116,39 +280,30 @@ class GeneralSettingsScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "PRIVATE",
+                        _privacy.name,
                         style: AppTextStyles.bodyText2(color: AppColors.white),
                       ),
-                      Icon(Icons.keyboard_arrow_down, color: AppColors.white),
+                      const Icon(Icons.keyboard_arrow_down, color: AppColors.white),
                     ],
                   ),
                 ),
-                items: [
-                  AppDropdownItem(value: "private", label: "PRIVATE"),
-                  AppDropdownItem(value: "private", label: "PUBLIC"),
+                onItemSelected: (val) {
+                  if (val == "PUBLIC") {
+                    setState(() => _privacy = GroupPrivacy.PUBLIC);
+                  } else if (val == "PRIVATE") {
+                    setState(() => _privacy = GroupPrivacy.PRIVATE);
+                  }
+                },
+                items: const [
+                  AppDropdownItem(
+                    value: "PUBLIC",
+                    label: "PUBLIC",
+                  ),
+                  AppDropdownItem(
+                    value: "PRIVATE",
+                    label: "PRIVATE",
+                  ),
                 ],
-              ),
-              AppSizes.lg.ph,
-              Text(
-                AppStrings.groupPrivacy,
-                style: AppTextStyles.headline5(color: AppColors.white),
-              ),
-              AppSizes.lg.ph,
-              Container(
-                height: 0.2.sh,
-                width: 0.2.sh,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryOrange,
-                  borderRadius: BorderRadius.circular(AppSizes.xs),
-                ),
-              ),
-              AppSizes.xs.ph,
-              AppButton(
-                isExpanded: false,
-                onPressed: () {},
-                bgColor: AppColors.darkBgContainer,
-                label: AppStrings.changeThumbnail,
-                labelStyle: AppTextStyles.button(color: AppColors.white),
               ),
               AppSizes.xxlg.ph,
               Text(
@@ -157,15 +312,17 @@ class GeneralSettingsScreen extends StatelessWidget {
               ),
               AppSizes.xxxs.ph,
               TextFormField(
+                controller: _nameController,
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: AppColors.darkBgContainer,
-                  hintText: "Sifat",
+                  hintText: "Enter group name",
                   hintStyle: AppTextStyles.button(color: AppColors.skyBlue),
-                  border: OutlineInputBorder(borderSide: BorderSide.none),
+                  border: const OutlineInputBorder(borderSide: BorderSide.none),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                    borderSide: BorderSide(color: AppColors.skyBlue),
+                    borderSide: const BorderSide(color: AppColors.skyBlue),
                   ),
                 ),
               ),
@@ -176,15 +333,17 @@ class GeneralSettingsScreen extends StatelessWidget {
               ),
               AppSizes.xxxs.ph,
               TextFormField(
+                controller: _slugController,
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: AppColors.darkBgContainer,
-                  hintText: "Sifat",
+                  hintText: "unique-group-slug",
                   hintStyle: AppTextStyles.button(color: AppColors.skyBlue),
-                  border: OutlineInputBorder(borderSide: BorderSide.none),
+                  border: const OutlineInputBorder(borderSide: BorderSide.none),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                    borderSide: BorderSide(color: AppColors.skyBlue),
+                    borderSide: const BorderSide(color: AppColors.skyBlue),
                   ),
                 ),
               ),
@@ -194,21 +353,51 @@ class GeneralSettingsScreen extends StatelessWidget {
                 style: AppTextStyles.headline5(color: AppColors.white),
               ),
               AppSizes.xxxs.ph,
-              AppDropdownSlashEditor(),
+              TextFormField(
+                controller: _descController,
+                maxLines: 4,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.darkBgContainer,
+                  hintText: "Describe your community...",
+                  hintStyle: AppTextStyles.button(color: AppColors.skyBlue),
+                  border: const OutlineInputBorder(borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                    borderSide: const BorderSide(color: AppColors.skyBlue),
+                  ),
+                ),
+              ),
               AppSizes.xxlg.ph,
               SwitchListTile(
                 controlAffinity: ListTileControlAffinity.leading,
-                value: true,
-                onChanged: (val) {},
-                title: Text(AppStrings.groupNameShown),
+                value: _isNameShown,
+                onChanged: (val) => setState(() => _isNameShown = val),
+                title: Text(
+                  AppStrings.groupNameShown,
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
               AppSizes.lg.ph,
               AppButton(
-                onPressed: () {},
+                onPressed: _isLoading ? () {} : () => _saveChanges(group),
                 bgColor: AppColors.primaryOrange,
-                label: AppStrings.saveChanges,
-                labelStyle: AppTextStyles.button(color: AppColors.black),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.black,
+                        ),
+                      )
+                    : Text(
+                        AppStrings.saveChanges,
+                        style: AppTextStyles.button(color: AppColors.black),
+                      ),
               ),
+              AppSizes.xlg.ph,
             ],
           ),
         ),

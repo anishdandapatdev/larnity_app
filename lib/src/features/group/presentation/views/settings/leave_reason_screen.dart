@@ -1,32 +1,102 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
+import 'package:intl/intl.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/constants/app_strings.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
 import 'package:larnity/src/core/ui/widgets/app_table.dart';
+import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/group/presentation/widgets/settings/manage_reasons.dart';
 
-class LeaveReasonScreen extends StatelessWidget {
-  LeaveReasonScreen({super.key});
+class LeaveReasonScreen extends ConsumerStatefulWidget {
+  const LeaveReasonScreen({super.key});
 
-  final List<Map<String, dynamic>> sampleData = [
-    {
-      AppStrings.user: 'Alex',
-      AppStrings.reason: 'Reason',
-      AppStrings.leftAt: 10,
-    },
-  ];
+  @override
+  ConsumerState<LeaveReasonScreen> createState() => _LeaveReasonScreenState();
+}
+
+class _LeaveReasonScreenState extends ConsumerState<LeaveReasonScreen> {
+  List<Map<String, dynamic>> _leaveRecords = [];
+  bool _isLoading = false;
+  String? _loadedGroupId;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchLeaveRecords();
+    });
+  }
+
+  Future<void> _fetchLeaveRecords() async {
+    final group = ref.read(groupProvider).group;
+    if (group == null || group.id == null) return;
+    if (_loadedGroupId == group.id && _leaveRecords.isNotEmpty) return;
+
+    setState(() => _isLoading = true);
+    _loadedGroupId = group.id;
+
+    try {
+      final client = ref.read(supabaseClientProvider);
+      final response = await client
+          .from('GroupMemberLeaves')
+          .select()
+          .eq('groupId', group.id!)
+          .order('leftAt', ascending: false);
+
+      if (mounted) {
+        setState(() {
+          _leaveRecords = List<Map<String, dynamic>>.from(response);
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final groupState = ref.watch(groupProvider);
+    final group = groupState.group;
+
+    if (group == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.darkBg,
+        body: Center(
+          child: Text(
+            "No group selected",
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    final dynamic rawReasons = group.landingSettings?['leaveReasons'];
+    final List<String> configuredReasons = rawReasons is List
+        ? rawReasons.map((e) => e.toString()).toList()
+        : [
+            "Too busy",
+            "Content not relevant",
+            "Financial reasons",
+            "Found another community",
+            "Other",
+          ];
+
     return Scaffold(
+      backgroundColor: AppColors.darkBg,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AppSizes.xs.ph,
             Row(
@@ -41,25 +111,28 @@ class LeaveReasonScreen extends StatelessWidget {
                         AppStrings.leaveReasons,
                         style: AppTextStyles.headline2(color: AppColors.white),
                       ),
-
                       Text(
                         AppStrings.leaveReasonsDesc,
-                        style: AppTextStyles.overLine(),
+                        style: AppTextStyles.overLine(color: AppColors.grey500),
                       ),
                     ],
                   ),
                 ),
-
                 AppButton(
                   isExpanded: false,
-                  onPressed: () {
-                    showDialog(
+                  onPressed: () async {
+                    await showDialog(
                       context: context,
-                      builder: (context) =>
-                          AlertDialog(content: ManageReasons()),
+                      builder: (context) => const AlertDialog(
+                        backgroundColor: AppColors.darkBgContainer,
+                        content: ManageReasons(),
+                      ),
                     );
+                    if (mounted) {
+                      _fetchLeaveRecords();
+                    }
                   },
-                  prefix: HugeIcon(
+                  prefix: const HugeIcon(
                     icon: HugeIconsStrokeRounded.addCircle,
                     color: AppColors.black,
                   ),
@@ -70,89 +143,135 @@ class LeaveReasonScreen extends StatelessWidget {
                 ),
               ],
             ),
-            AppSizes.xs.ph,
-            Expanded(
-              child: AppTable(
-                columns: [
-                  TableColumn(
-                    title: AppStrings.user,
-                    width: 140,
-                    cellBuilder: (index) => Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            sampleData[index][AppStrings.user],
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+            AppSizes.sm.ph,
+            Container(
+              padding: const EdgeInsets.all(AppSizes.xs),
+              decoration: BoxDecoration(
+                color: AppColors.darkBgContainer,
+                borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                border: Border.all(
+                  color: AppColors.skyBlue.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Configured Survey Reasons (${configuredReasons.length})",
+                    style: AppTextStyles.button(color: AppColors.skyBlue),
+                  ),
+                  AppSizes.xxs.ph,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: configuredReasons.map((reason) {
+                      return Chip(
+                        backgroundColor: AppColors.bgBlue,
+                        side: BorderSide(
+                          color: AppColors.skyBlue.withValues(alpha: 0.4),
+                        ),
+                        label: Text(
+                          reason,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.copy, size: 16, color: Colors.grey),
-                      ],
-                    ),
-                  ),
-                  TableColumn(
-                    title: AppStrings.activePlan,
-                    width: 120,
-                    cellBuilder: (index) => Text(
-                      sampleData[index]['planType'],
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                  TableColumn(
-                    title: 'Discount',
-                    width: 100,
-                    cellBuilder: (index) => Text(
-                      '${sampleData[index]['discount']}%',
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  TableColumn(
-                    title: 'Usage',
-                    width: 80,
-                    cellBuilder: (index) => Text(
-                      sampleData[index]['usage'],
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                  TableColumn(
-                    title: 'Status',
-                    width: 80,
-                    cellBuilder: (index) => Switch(
-                      value: sampleData[index]['status'],
-                      onChanged: (value) {
-                        // Handle switch toggle
-                        debugPrint('Toggle status for row $index');
-                      },
-                      activeThumbColor: Colors.green,
-                    ),
-                  ),
-                  TableColumn(
-                    title: 'Actions',
-                    width: 100,
-                    cellBuilder: (index) => ElevatedButton(
-                      onPressed: () {
-                        debugPrint('Delete row $index');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade600,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        minimumSize: Size.zero,
-                      ),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(fontSize: 12, color: Colors.white),
-                      ),
-                    ),
+                      );
+                    }).toList(),
                   ),
                 ],
-                rowCount: 0,
-                emptyWidget: Text(AppStrings.noPromoCode),
               ),
+            ),
+            AppSizes.sm.ph,
+            Text(
+              "Member Departure Feedback",
+              style: AppTextStyles.headline3(color: AppColors.white),
+            ),
+            AppSizes.xs.ph,
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryOrange,
+                      ),
+                    )
+                  : AppTable(
+                      columns: [
+                        TableColumn(
+                          title: AppStrings.user,
+                          width: 140,
+                          cellBuilder: (index) {
+                            final row = _leaveRecords[index];
+                            final userName =
+                                row['userName'] ?? row['userId'] ?? 'Unknown';
+                            return Text(
+                              userName.toString(),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w500),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
+                        ),
+                        TableColumn(
+                          title: AppStrings.reason,
+                          width: 160,
+                          cellBuilder: (index) {
+                            final row = _leaveRecords[index];
+                            return Text(
+                              row['reason']?.toString() ?? 'No reason given',
+                              style: const TextStyle(color: Colors.white),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
+                        ),
+                        TableColumn(
+                          title: 'Feedback',
+                          width: 200,
+                          cellBuilder: (index) {
+                            final row = _leaveRecords[index];
+                            return Text(
+                              row['feedback']?.toString() ?? '-',
+                              style: const TextStyle(color: Colors.grey),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
+                        ),
+                        TableColumn(
+                          title: 'Left At',
+                          width: 120,
+                          cellBuilder: (index) {
+                            final row = _leaveRecords[index];
+                            final leftAtStr = row['leftAt']?.toString();
+                            String formatted = '-';
+                            if (leftAtStr != null) {
+                              final dt = DateTime.tryParse(leftAtStr);
+                              if (dt != null) {
+                                formatted =
+                                    DateFormat('MMM dd, yyyy').format(dt);
+                              }
+                            }
+                            return Text(
+                              formatted,
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                      rowCount: _leaveRecords.length,
+                      emptyWidget: const Center(
+                        child: Text(
+                          "No members have left yet",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -160,3 +279,4 @@ class LeaveReasonScreen extends StatelessWidget {
     );
   }
 }
+

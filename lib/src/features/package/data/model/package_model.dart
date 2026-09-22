@@ -1,4 +1,3 @@
-
 class PackageModel {
   final String id;
   final DateTime createdAt;
@@ -11,6 +10,7 @@ class PackageModel {
   final Map<String, dynamic> features;
   final bool isFreeTrialPack;
   final int? freeTrialDays;
+  final int? fakePrice;
 
   const PackageModel({
     required this.id,
@@ -24,6 +24,7 @@ class PackageModel {
     required this.features,
     required this.isFreeTrialPack,
     this.freeTrialDays,
+    this.fakePrice,
   });
 
   PackageModel copyWith({
@@ -38,6 +39,7 @@ class PackageModel {
     Map<String, dynamic>? features,
     bool? isFreeTrialPack,
     int? freeTrialDays,
+    int? fakePrice,
   }) {
     return PackageModel(
       id: id ?? this.id,
@@ -51,6 +53,7 @@ class PackageModel {
       features: features ?? this.features,
       isFreeTrialPack: isFreeTrialPack ?? this.isFreeTrialPack,
       freeTrialDays: freeTrialDays ?? this.freeTrialDays,
+      fakePrice: fakePrice ?? this.fakePrice,
     );
   }
 
@@ -67,22 +70,28 @@ class PackageModel {
       'features': features,
       'isFreeTrialPack': isFreeTrialPack,
       'freeTrialDays': freeTrialDays,
+      'fakePrice': fakePrice,
     }..removeWhere((key, value) => value == null);
   }
 
   factory PackageModel.fromMap(Map<String, dynamic> map) {
     return PackageModel(
-      id: map['id'] as String,
-      createdAt: DateTime.parse(map['created_at'] as String),
-      name: map['name'] as String,
+      id: map['id']?.toString() ?? '',
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      name: map['name']?.toString() ?? 'Standard Plan',
       description: map['description'] as String?,
-      maxGroups: map['maxGroups'] as int,
-      monthlyPrice: map['monthlyPrice'] as int,
-      isActive: map['isActive'] as bool,
-      displayOrder: map['displayOrder'] as int,
-      features: Map<String, dynamic>.from(map['features'] as Map),
-      isFreeTrialPack: map['isFreeTrialPack'] as bool,
-      freeTrialDays: map['freeTrialDays'] as int?,
+      maxGroups: (map['maxGroups'] as num?)?.toInt() ?? 1,
+      monthlyPrice: (map['monthlyPrice'] as num?)?.toInt() ?? 0,
+      isActive: map['isActive'] as bool? ?? true,
+      displayOrder: (map['displayOrder'] as num?)?.toInt() ?? 0,
+      features: map['features'] != null && map['features'] is Map
+          ? Map<String, dynamic>.from(map['features'] as Map)
+          : <String, dynamic>{},
+      isFreeTrialPack: map['isFreeTrialPack'] as bool? ?? false,
+      freeTrialDays: (map['freeTrialDays'] as num?)?.toInt(),
+      fakePrice: (map['fakePrice'] as num?)?.toInt(),
     );
   }
 
@@ -91,13 +100,37 @@ class PackageModel {
       isFreeTrialPack && freeTrialDays != null && freeTrialDays! > 0;
 
   List<String> get featureList {
-    final featuresList = features['list'] as List<dynamic>?;
-    return featuresList?.cast<String>() ?? [];
+    final list = features['list'];
+    if (list is List && list.isNotEmpty) {
+      return list.map((e) => e.toString()).toList();
+    }
+    return [
+      'Create up to $maxGroups ${maxGroups == 1 ? 'community' : 'communities'}',
+      'Unlimited public & private channels',
+      'Send & receive rich messages and media',
+      'Community challenges and leaderboard',
+      if (maxGroups > 5) 'Dedicated manager and moderation roles',
+      if (monthlyPrice > 0) 'Priority support & analytics',
+    ];
   }
+
+  int get discountPercentage {
+    if (fakePrice != null && fakePrice! > monthlyPrice && fakePrice! > 0) {
+      return (((fakePrice! - monthlyPrice) / fakePrice!) * 100).round();
+    }
+    return 0;
+  }
+
+  bool get hasDiscount => discountPercentage > 0;
 
   String get formattedPrice {
     if (isFree) return 'Free';
-    return '\$${(monthlyPrice / 100).toStringAsFixed(2)}/month';
+    return '₹$monthlyPrice/month';
+  }
+
+  String get formattedFakePrice {
+    if (fakePrice == null) return '';
+    return '₹$fakePrice';
   }
 
   String get trialInfo {

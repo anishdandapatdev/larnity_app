@@ -32,7 +32,7 @@ class PromotionNotifier extends Notifier<PromotionState> {
         failureCallBack?.call(failure.message);
       },
       (promotion) {
-        final updatedPromotions = [...state.promotions ?? [], promotion];
+        final updatedPromotions = <PromotionModel>[...?state.promotions, promotion];
         state = state.copyWith(
           state: AsyncState.success,
           promotion: promotion,

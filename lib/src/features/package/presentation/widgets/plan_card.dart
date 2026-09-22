@@ -12,30 +12,52 @@ class PlanCard extends ConsumerWidget {
     super.key,
     required this.planName,
     required this.price,
+    this.fakePrice,
     required this.perUnit,
     required this.buttonLabel,
     this.description,
     required this.allowedGroupCreation,
+    this.features = const [],
     this.isActive = false,
     this.onPressed,
   });
 
   final String planName;
   final String price;
+  final String? fakePrice;
   final String perUnit;
   final String buttonLabel;
   final String? description;
   final int allowedGroupCreation;
+  final List<String> features;
   final bool isActive;
   final void Function()? onPressed;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final packageSubscriptionState = ref.watch(packageSubscriptionProvider);
+
+    final num? currentPriceNum = num.tryParse(price);
+    final num? fakePriceNum = fakePrice != null ? num.tryParse(fakePrice!) : null;
+    final bool hasDiscount = fakePriceNum != null &&
+        currentPriceNum != null &&
+        fakePriceNum > currentPriceNum;
+    final int discountPercentage = hasDiscount
+        ? (((fakePriceNum - currentPriceNum) / fakePriceNum) * 100).round()
+        : 0;
+
     return Container(
-      padding: EdgeInsets.all(AppSizes.xs),
+      padding: const EdgeInsets.all(AppSizes.xs),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.5)),
+        color: isActive
+            ? AppColors.darkBrown.withValues(alpha: 0.3)
+            : AppColors.darkBgContainer.withValues(alpha: 0.4),
+        border: Border.all(
+          color: isActive
+              ? AppColors.green
+              : AppColors.skyBlue.withValues(alpha: 0.5),
+          width: isActive ? 1.5 : 1.0,
+        ),
         borderRadius: BorderRadius.circular(AppSizes.xxxs),
       ),
       child: Column(
@@ -50,126 +72,127 @@ class PlanCard extends ConsumerWidget {
               ),
               if (isActive)
                 Container(
-                  padding: EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: AppSizes.xxxs,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
+                    color: AppColors.green.withValues(alpha: 0.15),
                     border: Border.all(color: AppColors.green),
                     borderRadius: BorderRadius.circular(AppSizes.lg),
                   ),
-                  child: Text(
-                    "Active",
-                    style: AppTextStyles.caption2(
-                      color: AppColors.green,
-                    ).copyWith(fontWeight: AppFontWeights.black),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check, color: AppColors.green, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        "Active Plan",
+                        style: AppTextStyles.caption2(
+                          color: AppColors.green,
+                        ).copyWith(fontWeight: AppFontWeights.black),
+                      ),
+                    ],
                   ),
                 ),
             ],
           ),
-          AppSizes.lg.ph,
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(text: "₹ $price", style: AppTextStyles.headline1()),
-                TextSpan(
-                  text: "/$perUnit",
-                  style: AppTextStyles.headline3(
-                    color: AppColors.white.withValues(alpha: 0.5),
-                  ),
+          AppSizes.sm.ph,
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            children: [
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: "₹ $price",
+                      style: AppTextStyles.headline1(),
+                    ),
+                    TextSpan(
+                      text: "/$perUnit",
+                      style: AppTextStyles.headline3(
+                        color: AppColors.white.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          AppSizes.lg.ph,
-
-          Text(
-            "Create up to $allowedGroupCreation groups",
-            style: AppTextStyles.headline3(color: AppColors.white),
-          ),
-          AppSizes.lg.ph,
-
-          // ListView.separated(
-          //   shrinkWrap: true,
-          //   physics: NeverScrollableScrollPhysics(),
-          //   itemBuilder: (context,index)=>Row(
-          //   crossAxisAlignment: CrossAxisAlignment.start,
-          //   children: [
-          //     Icon(Icons.check),
-          //     AppSizes.xxxs.pw,
-          //     Expanded(
-          //       child: Text(
-          //         "Create and manage groups",
-          //         style: AppTextStyles.overLine(),
-          //       ),
-          //     ),
-          //   ],
-          // ), separatorBuilder: (_,__)=> AppSizes.xs.ph, itemCount: 1,),
-
-          // AppSizes.xs.ph,
-          if (description != null)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.check),
-                AppSizes.xxxs.pw,
-                Expanded(
+              ),
+              if (hasDiscount) ...[
+                Text(
+                  "₹ $fakePrice",
+                  style: AppTextStyles.headline4(
+                    color: AppColors.white.withValues(alpha: 0.4),
+                  ).copyWith(decoration: TextDecoration.lineThrough),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryOrange.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppColors.primaryOrange, width: 0.8),
+                  ),
                   child: Text(
-                    description ?? "",
-                    style: AppTextStyles.overLine(),
+                    "$discountPercentage% OFF",
+                    style: AppTextStyles.caption2(
+                      color: AppColors.primaryOrange,
+                    ).copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
+            ],
+          ),
+          AppSizes.sm.ph,
+          Text(
+            "Create up to $allowedGroupCreation ${allowedGroupCreation == 1 ? 'group' : 'groups'}",
+            style: AppTextStyles.headline4(color: AppColors.white),
+          ),
+          if (description != null && description!.trim().isNotEmpty) ...[
+            AppSizes.xxxs.ph,
+            Text(
+              description!,
+              style: AppTextStyles.overLine(
+                color: AppColors.white.withValues(alpha: 0.7),
+              ),
             ),
-          // AppSizes.xs.ph,
-          // Row(
-          //   crossAxisAlignment: CrossAxisAlignment.start,
-          //   children: [
-          //     Icon(Icons.check),
-          //     AppSizes.xxxs.pw,
-          //     Expanded(
-          //       child: Text(
-          //         "Create and maange channels",
-          //         style: AppTextStyles.overLine(),
-          //       ),
-          //     ),
-          //   ],
-          // ),
-          // AppSizes.xs.ph,
-          // Row(
-          //   crossAxisAlignment: CrossAxisAlignment.start,
-          //   children: [
-          //     Icon(Icons.check),
-          //     AppSizes.xxxs.pw,
-          //     Expanded(
-          //       child: Text(
-          //         "Manage channel members",
-          //         style: AppTextStyles.overLine(),
-          //       ),
-          //     ),
-          //   ],
-          // ),
-          // AppSizes.xs.ph,
-          // Row(
-          //   crossAxisAlignment: CrossAxisAlignment.start,
-          //   children: [
-          //     Icon(Icons.check),
-          //     AppSizes.xxxs.pw,
-          //     Expanded(
-          //       child: Text(
-          //         "Send and receive messages",
-          //         style: AppTextStyles.overLine(),
-          //       ),
-          //     ),
-          //   ],
-          // ),
-          AppSizes.lg.ph,
+          ],
+          if (features.isNotEmpty) ...[
+            AppSizes.sm.ph,
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: features.length,
+              separatorBuilder: (context, index) => AppSizes.xxxs.ph,
+              itemBuilder: (context, index) => Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: AppColors.skyBlue,
+                    size: 16,
+                  ),
+                  AppSizes.xxxs.pw,
+                  Expanded(
+                    child: Text(
+                      features[index],
+                      style: AppTextStyles.overLine(
+                        color: AppColors.white.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          AppSizes.md.ph,
           AppButton(
             isLoading: packageSubscriptionState.isLoading,
             onPressed: onPressed,
             label: buttonLabel,
-            labelStyle: AppTextStyles.bodyText2(),
-            bgColor: AppColors.white,
+            labelStyle: AppTextStyles.bodyText2(
+              color: isActive ? AppColors.white : AppColors.darkBrown,
+            ),
+            bgColor: isActive ? Colors.transparent : AppColors.white,
             radius: AppSizes.xxxs,
           ),
         ],

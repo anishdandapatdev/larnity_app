@@ -164,6 +164,38 @@ class GroupNotifier extends Notifier<GroupState> {
     );
   }
 
+  Future<void> updateGroup({
+    required GroupModel group,
+    void Function()? successCallBack,
+    void Function(String error)? failureCallBack,
+  }) async {
+    final dataSource = ref.read(groupDataSourceProvider);
+    state = state.copyWith(createState: AsyncState.loading);
+    final response = await dataSource.updateGroup(group: group);
+
+    response.fold(
+      (failure) {
+        state = state.copyWith(
+          createState: AsyncState.failure,
+          error: failure.message,
+        );
+        failureCallBack?.call(failure.message);
+      },
+      (updatedGroup) {
+        final updatedGroups = state.groups?.map((g) {
+          return g.id == updatedGroup.id ? updatedGroup : g;
+        }).toList();
+
+        state = state.copyWith(
+          createState: AsyncState.success,
+          group: updatedGroup,
+          groups: updatedGroups,
+        );
+        successCallBack?.call();
+      },
+    );
+  }
+
   Future<void> getGroupBySlug({required String slug}) async {
     final dataSource = ref.read(groupDataSourceProvider);
 

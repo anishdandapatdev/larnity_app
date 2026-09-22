@@ -55,11 +55,32 @@ class ChatNotifier extends AutoDisposeFamilyNotifier<ChatState, String> {
     final result = await ds.getChannels(groupId: _groupId);
     result.fold(
       (f) => state = state.copyWith(fetchState: AsyncState.failure, error: f.message),
-      (channels) {
-        state = state.copyWith(fetchState: AsyncState.success, channels: channels);
-        // Auto-select first channel if available
-        if (channels.isNotEmpty && state.selectedChannel == null) {
-          selectChannel(channels.first);
+      (channels) async {
+        if (channels.isEmpty) {
+          final createRes = await ds.createChannel(
+            channel: ChannelModel(groupId: _groupId, name: "General"),
+          );
+          createRes.fold(
+            (_) {
+              state = state.copyWith(
+                fetchState: AsyncState.success,
+                channels: [],
+              );
+            },
+            (genChan) {
+              state = state.copyWith(
+                fetchState: AsyncState.success,
+                channels: [genChan],
+                selectedChannel: genChan,
+              );
+              fetchMessages();
+            },
+          );
+        } else {
+          state = state.copyWith(fetchState: AsyncState.success, channels: channels);
+          if (state.selectedChannel == null) {
+            selectChannel(channels.first);
+          }
         }
       },
     );
@@ -114,7 +135,7 @@ class ChatNotifier extends AutoDisposeFamilyNotifier<ChatState, String> {
       (f) => state = state.copyWith(error: f.message),
       (olderMessages) {
         // Prepend older messages
-        final allMessages = [...olderMessages.reversed, ...(state.messages ?? [])];
+        final allMessages = <MessageModel>[...olderMessages.reversed, ...?state.messages];
         state = state.copyWith(
           messages: allMessages,
           hasMore: olderMessages.length >= _pageSize,
@@ -138,7 +159,7 @@ class ChatNotifier extends AutoDisposeFamilyNotifier<ChatState, String> {
       (sent) {
         state = state.copyWith(
           sendState: AsyncState.success,
-          messages: [...(state.messages ?? []), sent],
+          messages: <MessageModel>[...?state.messages, sent],
         );
         successCallBack?.call();
       },
@@ -163,6 +184,6 @@ class ChatNotifier extends AutoDisposeFamilyNotifier<ChatState, String> {
     if (message.channelId != state.selectedChannel?.id) return;
     // Avoid duplicates
     if (state.messages?.any((m) => m.id == message.id) == true) return;
-    state = state.copyWith(messages: [...(state.messages ?? []), message]);
+    state = state.copyWith(messages: <MessageModel>[...?state.messages, message]);
   }
 }
