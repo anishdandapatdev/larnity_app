@@ -46,6 +46,28 @@ class PackageSubscriptionScreen extends ConsumerWidget {
     final userId = ref.watch(authProvider).user?.id;
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.black,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.explore);
+            }
+          },
+        ),
+        title: const Text(
+          'My Subscription',
+          style: TextStyle(
+            color: AppColors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.xs),
         child: SingleChildScrollView(

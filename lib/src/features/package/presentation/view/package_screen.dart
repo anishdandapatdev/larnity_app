@@ -20,6 +20,28 @@ class PackageScreen extends ConsumerWidget {
     final packageState = ref.watch(packageProvider);
     final packageSubscriptionState = ref.watch(packageSubscriptionProvider);
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.black,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.goNamed(Routes.explore);
+            }
+          },
+        ),
+        title: const Text(
+          'Packages',
+          style: TextStyle(
+            color: AppColors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(AppSizes.xs),
         child: SingleChildScrollView(
