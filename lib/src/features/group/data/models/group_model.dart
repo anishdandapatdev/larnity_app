@@ -156,42 +156,46 @@ class GroupModel extends Equatable {
 
   factory GroupModel.fromMap(Map<String, dynamic> map) {
     return GroupModel(
-      id: map['id'] as String,
-      createdAt: DateTime.parse(map['created_at'] as String),
-      name: map['name'] as String,
-      category: map['category'] as String,
-      thumbnail: map['thumbnail'] as String?,
-      description: map['description'] as String?,
-      gallery: map['gallery'] != null
-          ? List<String>.from(map['gallery'] as List)
+      id: map['id']?.toString(),
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'].toString())
           : null,
-      jsonDescription: map['jsonDescription'] as String?,
-      htmlDescription: map['htmlDescription'] as String?,
-      googleSheetId: map['googleSheetId'] as String?,
+      name: map['name']?.toString() ?? '',
+      category: map['category']?.toString(),
+      thumbnail: map['thumbnail']?.toString(),
+      description: map['description']?.toString(),
+      gallery: map['gallery'] != null && map['gallery'] is List
+          ? (map['gallery'] as List).map((e) => e.toString()).toList()
+          : null,
+      jsonDescription: map['jsonDescription']?.toString(),
+      htmlDescription: map['htmlDescription']?.toString(),
+      googleSheetId: map['googleSheetId']?.toString(),
       enableGoogleSheetSync: map['enableGoogleSheetSync'] as bool?,
-      icon: map['icon'] as String?,
+      icon: map['icon']?.toString(),
       privacy: GroupPrivacy.values.firstWhere(
-        (e) => e.name == map['privacy'],
-        orElse: () => GroupPrivacy.PRIVATE,
+        (e) => e.name.toUpperCase() == map['privacy']?.toString().toUpperCase(),
+        orElse: () => GroupPrivacy.PUBLIC,
       ),
       active: map['active'] as bool? ?? true,
-      userId: map['userId'] as String,
-      domain: map['domain'] as String?,
-      monthlyPrice: map['monthlyPrice'] as int?,
-      yearlyPrice: map['yearlyPrice'] as int?,
-      lifetimePrice: map['lifetimePrice'] as int?,
+      userId: map['userId']?.toString(),
+      domain: map['domain']?.toString(),
+      monthlyPrice: (map['monthlyPrice'] as num?)?.toInt(),
+      yearlyPrice: (map['yearlyPrice'] as num?)?.toInt(),
+      lifetimePrice: (map['lifetimePrice'] as num?)?.toInt(),
       isSuspended: map['isSuspended'] as bool? ?? false,
       updatedAt: map['updated_at'] != null
-          ? DateTime.parse(map['updated_at'] as String)
+          ? DateTime.tryParse(map['updated_at'].toString())
           : null,
-      packageSubscriptionId: map['packageSubscriptionId'] as String?,
-      rejectionReason: map['rejectionReason'] as String?,
+      packageSubscriptionId: map['packageSubscriptionId']?.toString(),
+      rejectionReason: map['rejectionReason']?.toString(),
       status: GroupStatus.values.firstWhere(
-        (e) => e.name == map['status'],
+        (e) => e.name.toUpperCase() == map['status']?.toString().toUpperCase(),
         orElse: () => GroupStatus.CREATED,
       ),
-      slug: map['slug'] as String?,
-      landingSettings: map['landingSettings'] as Map<String, dynamic>?,
+      slug: map['slug']?.toString(),
+      landingSettings: map['landingSettings'] is Map<String, dynamic>
+          ? map['landingSettings'] as Map<String, dynamic>
+          : null,
     );
   }
 

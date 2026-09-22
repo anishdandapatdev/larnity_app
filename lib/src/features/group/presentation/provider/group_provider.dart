@@ -126,6 +126,7 @@ class GroupNotifier extends Notifier<GroupState> {
       (groups) => state = state.copyWith(
         fetchState: AsyncState.success,
         groups: groups,
+        exploreGroups: groups,
       ),
     );
   }
@@ -224,8 +225,16 @@ class GroupNotifier extends Notifier<GroupState> {
     state = state.copyWith(group: group);
   }
 
-  void selectCategory({required Category category}) {
-    state = state.copyWith(selectedCategory: category);
+  void selectCategory({Category? category}) {
+    if (category == null || category.name == 'All') {
+      state = state.copyWith(clearSelectedCategory: true);
+    } else {
+      state = state.copyWith(selectedCategory: category);
+    }
+  }
+
+  void clearCategory() {
+    state = state.copyWith(clearSelectedCategory: true);
   }
 
   void refreshGroupsForCurrentUser() {
@@ -243,6 +252,7 @@ class GroupState {
   final String? groupName;
   final GroupModel? group;
   final List<GroupModel>? groups;
+  final List<GroupModel>? exploreGroups;
   final Category? selectedCategory;
 
   GroupState({
@@ -252,6 +262,7 @@ class GroupState {
     this.groupName,
     this.group,
     this.groups,
+    this.exploreGroups,
     this.selectedCategory,
   });
 
@@ -262,7 +273,9 @@ class GroupState {
     String? groupName,
     GroupModel? group,
     List<GroupModel>? groups,
+    List<GroupModel>? exploreGroups,
     Category? selectedCategory,
+    bool clearSelectedCategory = false,
   }) {
     return GroupState(
       fetchState: fetchState ?? this.fetchState,
@@ -271,7 +284,10 @@ class GroupState {
       groupName: groupName ?? this.groupName,
       group: group ?? this.group,
       groups: groups ?? this.groups,
-      selectedCategory: selectedCategory ?? this.selectedCategory,
+      exploreGroups: exploreGroups ?? this.exploreGroups,
+      selectedCategory: clearSelectedCategory
+          ? null
+          : (selectedCategory ?? this.selectedCategory),
     );
   }
 
@@ -280,6 +296,7 @@ class GroupState {
   bool get isFailure => fetchState == AsyncState.failure;
 
   List<GroupModel> get publicGroups =>
+      exploreGroups ??
       groups?.where((group) => group.isPublic && group.isApproved).toList() ??
       [];
 

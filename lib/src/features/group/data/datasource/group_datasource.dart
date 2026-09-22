@@ -66,24 +66,59 @@ class GroupDataSource {
           .eq('userId', userId)
           .order('created_at', ascending: false);
 
-      final ownedGroups = (ownedResponse as List)
-          .map((data) => GroupModel.fromMap(data))
-          .toList();
+      final ownedGroups = <GroupModel>[];
+      for (var data in ownedResponse as List) {
+        try {
+          ownedGroups.add(GroupModel.fromMap(data as Map<String, dynamic>));
+        } catch (e) {
+          Log.error("Error parsing owned group: $e");
+        }
+      }
 
       // Fetch groups where user is a member
-      final memberResponse = await supabaseClient
-          .from('Members')
-          .select('groupId, Group(*)')
-          .eq('userId', userId);
-
       final joinedGroups = <GroupModel>[];
-      for (var row in memberResponse as List) {
-        if (row['Group'] != null) {
-          try {
-            joinedGroups.add(GroupModel.fromMap(row['Group']));
-          } catch (e) {
-            Log.error("Error parsing joined group: $e");
+      try {
+        final memberResponse = await supabaseClient
+            .from('Members')
+            .select('groupId, Group(*)')
+            .eq('userId', userId);
+
+        for (var row in memberResponse as List) {
+          if (row['Group'] != null) {
+            try {
+              joinedGroups.add(GroupModel.fromMap(row['Group'] as Map<String, dynamic>));
+            } catch (e) {
+              Log.error("Error parsing joined group: $e");
+            }
           }
+        }
+      } catch (e) {
+        Log.warning("Could not fetch joined groups via direct relation: $e");
+        // Fallback: fetch groupIds from Members then query Group table directly
+        try {
+          final memberRows = await supabaseClient
+              .from('Members')
+              .select('groupId')
+              .eq('userId', userId);
+          final groupIds = (memberRows as List)
+              .map((r) => r['groupId']?.toString())
+              .where((id) => id != null && id.isNotEmpty)
+              .toList();
+          if (groupIds.isNotEmpty) {
+            final fallbackResponse = await supabaseClient
+                .from('Group')
+                .select()
+                .filter('id', 'in', groupIds);
+            for (var data in fallbackResponse as List) {
+              try {
+                joinedGroups.add(GroupModel.fromMap(data as Map<String, dynamic>));
+              } catch (e2) {
+                Log.error("Error parsing fallback joined group: $e2");
+              }
+            }
+          }
+        } catch (fallbackError) {
+          Log.error("Fallback member query also failed: $fallbackError");
         }
       }
 
@@ -118,13 +153,22 @@ class GroupDataSource {
       final response = await supabaseClient
           .from('Group')
           .select()
-          .eq('privacy', 'PUBLIC')
-          .eq('active', true)
-          .eq('status', 'APPROVED')
-          .eq('isSuspended', false)
           .order('created_at', ascending: false);
 
-      final groups = response.map((data) => GroupModel.fromMap(data)).toList();
+      final groups = <GroupModel>[];
+      for (var data in response as List) {
+        try {
+          final group = GroupModel.fromMap(data as Map<String, dynamic>);
+          // Exclude suspended and private groups
+          final isNotSuspended = group.isSuspended != true;
+          final isNotPrivate = group.privacy != GroupPrivacy.PRIVATE;
+          if (isNotSuspended && isNotPrivate) {
+            groups.add(group);
+          }
+        } catch (e) {
+          Log.error("Error parsing public group: $e");
+        }
+      }
 
       return Right(groups);
     } on PostgrestException catch (e) {
