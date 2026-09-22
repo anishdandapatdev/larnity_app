@@ -14,6 +14,7 @@ import 'package:larnity/src/core/utils/logger.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/features/auth/presentation/view/auth_screen.dart';
 import 'package:larnity/src/features/auth/presentation/view/forgot_password_screen.dart';
+import 'package:larnity/src/features/auth/presentation/view/change_password_screen.dart';
 import 'package:larnity/src/features/explore/presentation/view/explore_screen.dart';
 import 'package:larnity/src/features/explore/presentation/view/notification_screen.dart';
 import 'package:larnity/src/features/explore/presentation/view/group_details_screen.dart';

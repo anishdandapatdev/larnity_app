@@ -23,11 +23,29 @@ import 'package:larnity/src/features/group/presentation/provider/group_provider.
 import 'package:larnity/src/features/package/presentation/provider/package_provider.dart';
 import 'package:larnity/src/features/package_subscription/presentation/providers/package_subscription_provider.dart';
 
-class PackageSubscriptionScreen extends ConsumerWidget {
+class PackageSubscriptionScreen extends ConsumerStatefulWidget {
   const PackageSubscriptionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PackageSubscriptionScreen> createState() =>
+      _PackageSubscriptionScreenState();
+}
+
+class _PackageSubscriptionScreenState
+    extends ConsumerState<PackageSubscriptionScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = ref.read(authProvider).user?.id;
+      if (userId != null && userId.isNotEmpty) {
+        ref.read(groupProvider.notifier).getGroupsByUser(userId: userId);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Watch the expanded state
     final isExpanded = ref.watch(exploreGroupExpandedProvider);
 
@@ -417,24 +435,46 @@ class PackageSubscriptionScreen extends ConsumerWidget {
                       AppSizes.xs.ph,
                       Builder(
                         builder: (context) {
-                          if (groupState.fetchState == AsyncState.loading) {
-                            return Center(child: CircularProgressIndicator());
+                          final userGroups = (groupState.groups ?? [])
+                              .where((g) =>
+                                  userId == null ||
+                                  userId.isEmpty ||
+                                  g.userId == userId)
+                              .toList();
+
+                          if (groupState.fetchState == AsyncState.loading &&
+                              userGroups.isEmpty) {
+                            return const Padding(
+                              padding:
+                                  EdgeInsets.symmetric(vertical: AppSizes.md),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
                           } else if (groupState.fetchState ==
-                              AsyncState.failure) {
-                            return Center(child: Text('Something went wrong'));
-                          } else if (groupState.fetchState ==
-                                  AsyncState.success &&
-                              groupState.groups != null &&
-                              groupState.groups!.isNotEmpty) {
+                                  AsyncState.failure &&
+                              userGroups.isEmpty) {
+                            return const Padding(
+                              padding:
+                                  EdgeInsets.symmetric(vertical: AppSizes.md),
+                              child: Center(
+                                child: Text(
+                                  'Something went wrong',
+                                  style: TextStyle(color: AppColors.grey500),
+                                ),
+                              ),
+                            );
+                          } else if (userGroups.isNotEmpty) {
                             return ListView.separated(
                               shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
+                              physics: const NeverScrollableScrollPhysics(),
                               itemBuilder: (context, index) {
-                                final group = groupState.groups![index];
+                                final group = userGroups[index];
                                 Log.info("Group: ${group.toMap()}");
                                 return AppButton(
                                   isExpanded: false,
                                   onPressed: () {
+                                    ref
+                                        .read(groupProvider.notifier)
+                                        .setSelectedGroup(group);
                                     // Navigate to the group screen
                                     context.pushNamed(Routes.group);
                                   },
@@ -466,7 +506,9 @@ class PackageSubscriptionScreen extends ConsumerWidget {
                                                 child: Text(
                                                   group.name.substring(
                                                     0,
-                                                    2,
+                                                    group.name.length >= 2
+                                                        ? 2
+                                                        : group.name.length,
                                                   ),
                                                   style:
                                                       AppTextStyles.bodyText2(
@@ -507,11 +549,18 @@ class PackageSubscriptionScreen extends ConsumerWidget {
                                 );
                               },
                               separatorBuilder: (_, _) => AppSizes.xs.ph,
-                              itemCount: groupState.groups!.length,
+                              itemCount: userGroups.length,
                             );
                           } else {
-                            return Center(
-                              child: Text("You haven't created any groups yet"),
+                            return const Padding(
+                              padding:
+                                  EdgeInsets.symmetric(vertical: AppSizes.md),
+                              child: Center(
+                                child: Text(
+                                  "You haven't created any groups yet",
+                                  style: TextStyle(color: AppColors.grey500),
+                                ),
+                              ),
                             );
                           }
                         },

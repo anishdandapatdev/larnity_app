@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:larnity/src/core/service/cache/user_cache_service.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
 import 'package:larnity/src/features/auth/data/datasources/auth_datasource.dart';
 import 'package:larnity/src/features/auth/data/models/user_model.dart';
+import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/features/profile/data/datasource/profile_datasource.dart';
 
 final profileProvider = NotifierProvider<ProfileNotifier, ProfileState>(
@@ -18,9 +20,8 @@ class ProfileNotifier extends Notifier<ProfileState> {
   Future<void> createProfile({
     required UserModel user,
     void Function()? successCallBack,
-    void Function()? failureCallBack,
+    void Function(String error)? failureCallBack,
   }) async {
-
     final dataSource = ref.read(profileDataSourceProvider);
 
     state = state.copyWith(state: AsyncState.loading);
@@ -28,17 +29,25 @@ class ProfileNotifier extends Notifier<ProfileState> {
     final response = await dataSource.createProfile(user: user);
 
     response.fold(
-          (failure) {
+      (failure) {
         state = state.copyWith(
           state: AsyncState.failure,
           error: failure.message,
         );
-        failureCallBack?.call();
+        failureCallBack?.call(failure.message);
       },
-          (user) {
+      (savedUser) {
         state = state.copyWith(
           state: AsyncState.success,
-          user: user,
+          user: savedUser,
+        );
+        // Synchronize with auth provider & local cache
+        ref.read(authProvider.notifier).updateUser(savedUser);
+        ref.read(userCacheServiceProvider).saveUser(
+          firstName: savedUser.firstName,
+          lastName: savedUser.lastName,
+          image: savedUser.image,
+          phoneNumber: savedUser.phoneNumber,
         );
         successCallBack?.call();
       },
@@ -98,14 +107,68 @@ class ProfileNotifier extends Notifier<ProfileState> {
         );
         failureCallBack?.call(failure.message);
       },
-      (imageUrl) {
+      (imageUrl) async {
         state = state.copyWith(
           imageState: AsyncState.success,
           user: state.user?.copyWith(image: imageUrl),
         );
+
+        final currentUser = ref.read(authProvider).user;
+        if (currentUser != null) {
+          final updated = currentUser.copyWith(image: imageUrl);
+          await dataSource.createProfile(user: updated);
+          ref.read(authProvider.notifier).updateUser(updated);
+          ref.read(userCacheServiceProvider).saveUser(
+            firstName: updated.firstName,
+            lastName: updated.lastName,
+            image: updated.image,
+            phoneNumber: updated.phoneNumber,
+          );
+        }
+
         successCallBack?.call(imageUrl);
       },
     );
+  }
+
+  Future<void> removeProfileImage({
+    required String userId,
+    void Function()? successCallBack,
+    void Function(String error)? failureCallBack,
+  }) async {
+    final dataSource = ref.read(profileDataSourceProvider);
+
+    state = state.copyWith(imageState: AsyncState.loading);
+
+    final currentUser = ref.read(authProvider).user;
+    if (currentUser != null) {
+      final updated = currentUser.copyWith(image: '');
+      final response = await dataSource.createProfile(user: updated);
+
+      response.fold(
+        (failure) {
+          state = state.copyWith(
+            imageState: AsyncState.failure,
+            imageError: failure.message,
+          );
+          failureCallBack?.call(failure.message);
+        },
+        (savedUser) {
+          state = state.copyWith(
+            imageState: AsyncState.success,
+            user: savedUser,
+          );
+          ref.read(authProvider.notifier).updateUser(savedUser);
+          ref.read(userCacheServiceProvider).saveUser(
+            firstName: savedUser.firstName,
+            lastName: savedUser.lastName,
+            image: '',
+            phoneNumber: savedUser.phoneNumber,
+          );
+          successCallBack?.call();
+        },
+      );
+    }
   }
 }
 

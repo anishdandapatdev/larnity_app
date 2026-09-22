@@ -100,6 +100,10 @@ class AuthNotifier extends Notifier<AuthState> {
     );
   }
 
+  void updateUser(UserModel user) {
+    state = state.copyWith(user: user);
+  }
+
   Future<void> signInWithEmail({
     void Function()? successCallBack,
     void Function()? failureCallBack,

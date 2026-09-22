@@ -26,6 +26,7 @@ class Routes {
   static const String choosePlan = 'choose-plan';
   static const String payment = 'payment';
   static const String forgotPassword = 'forgot-password';
+  static const String changePassword = 'change-password';
 
   // Room Routes
   static const String discussionRoom = 'discussion-room';
@@ -83,6 +84,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       _buildExploreShellRoutes(),
       _buildAuthScreenRoute(),
       _buildForgotPasswordScreenRoute(),
+      _buildChangePasswordScreenRoute(),
       _buildNotificationScreenRoute(),
       _buildGroupShellRoutes(),
       _buildCourseDetailScreenRoute(),
@@ -472,6 +474,14 @@ GoRoute _buildForgotPasswordScreenRoute() => GoRoute(
       final email = state.extra as String?;
       return ForgotPasswordScreen(prefillEmail: email);
     },
+  ),
+);
+
+GoRoute _buildChangePasswordScreenRoute() => GoRoute(
+  name: Routes.changePassword,
+  path: Routes.changePassword.p,
+  pageBuilder: _getDefaultPageBuilderByPlatform(
+    childBuilder: (_, state) => const ChangePasswordScreen(),
   ),
 );
 
