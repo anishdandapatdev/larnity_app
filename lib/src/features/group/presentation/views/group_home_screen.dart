@@ -6,6 +6,7 @@ import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
 import 'package:larnity/src/core/router/router.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_storage_service.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/features/group/data/models/group_model.dart';
@@ -20,6 +21,23 @@ class GroupHomeScreen extends ConsumerStatefulWidget {
 
 class _GroupHomeScreenState extends ConsumerState<GroupHomeScreen> {
   bool _dismissedOnboarding = false;
+
+  String? _resolveImageUrl(WidgetRef ref, String? rawUrl) {
+    if (rawUrl == null || rawUrl.trim().isEmpty) return null;
+    final trimmed = rawUrl.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    try {
+      final storage = ref.read(storageServiceProvider);
+      return storage.getPublicUrl(
+        bucket: StorageBucket.groupImages,
+        path: trimmed,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 
   Widget _buildRoomButton(
     BuildContext context,
@@ -139,6 +157,11 @@ class _GroupHomeScreenState extends ConsumerState<GroupHomeScreen> {
       return visibility[key] != false;
     }).toList();
 
+    final bannerUrl = _resolveImageUrl(ref, group?.thumbnail) ??
+        _resolveImageUrl(ref, group?.icon);
+    final iconUrl = _resolveImageUrl(ref, group?.icon) ??
+        _resolveImageUrl(ref, group?.thumbnail);
+
     return Scaffold(
       backgroundColor: AppColors.darkBg,
       body: Padding(
@@ -146,6 +169,133 @@ class _GroupHomeScreenState extends ConsumerState<GroupHomeScreen> {
         child: Column(
           children: [
             AppSizes.xs.ph,
+            if (group != null) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: AppSizes.xs),
+                height: 84,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                  border: Border.all(
+                    color: AppColors.borderBrown.withValues(alpha: 0.5),
+                  ),
+                  color: AppColors.darkBgContainer,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
+                  children: [
+                    if (bannerUrl != null)
+                      Positioned.fill(
+                        child: Image.network(
+                          bannerUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const SizedBox.shrink(),
+                        ),
+                      ),
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.black.withValues(alpha: 0.9),
+                              AppColors.black.withValues(alpha: 0.6),
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.xs,
+                        vertical: AppSizes.xxs,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppColors.primaryOrange,
+                                width: 1.5,
+                              ),
+                              color: AppColors.black,
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: iconUrl != null
+                                ? Image.network(
+                                    iconUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) => Center(
+                                      child: Text(
+                                        group.name.isNotEmpty
+                                            ? group.name.characters.first.toUpperCase()
+                                            : 'G',
+                                        style: AppTextStyles.headline4(
+                                          color: AppColors.primaryOrange,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Text(
+                                      group.name.isNotEmpty
+                                          ? group.name.characters.first.toUpperCase()
+                                          : 'G',
+                                      style: AppTextStyles.headline4(
+                                        color: AppColors.primaryOrange,
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                          AppSizes.xs.pw,
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  group.name,
+                                  style: AppTextStyles.subtitle1(
+                                    color: AppColors.white,
+                                  ).copyWith(fontWeight: AppFontWeights.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                AppSizes.xxxs.ph,
+                                Row(
+                                  children: [
+                                    HugeIcon(
+                                      icon: group.isPublic
+                                          ? HugeIconsStrokeRounded.globe02
+                                          : HugeIconsStrokeRounded.squareLock01,
+                                      color: AppColors.primaryOrange,
+                                      size: 13,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      "${group.memberCount ?? 0} Members",
+                                      style: AppTextStyles.overLine(
+                                        color: AppColors.creamWhite,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (showOnboarding)
               Container(
                 padding: const EdgeInsets.all(AppSizes.xs),

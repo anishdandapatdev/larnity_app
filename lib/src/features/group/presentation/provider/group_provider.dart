@@ -114,14 +114,17 @@ class GroupNotifier extends Notifier<GroupState> {
 
   Future<void> getPublicGroups() async {
     final dataSource = ref.read(groupDataSourceProvider);
+    state = state.copyWith(fetchState: AsyncState.loading);
 
     final response = await dataSource.getPublicGroups();
 
     response.fold(
       (failure) => state = state.copyWith(
+        fetchState: AsyncState.failure,
         error: failure.message,
       ),
       (groups) => state = state.copyWith(
+        fetchState: AsyncState.success,
         exploreGroups: groups,
       ),
     );
