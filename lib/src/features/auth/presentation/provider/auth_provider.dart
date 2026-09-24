@@ -30,15 +30,28 @@ class AuthNotifier extends Notifier<AuthState> {
   AuthState build() {
     Log.info("AuthNotifier initialized");
 
-    // Don't read providers in build - just return initial state
-    // The actual auth check will happen after initialization
+    final client = ref.read(supabaseClientProvider);
+    final session = client.auth.currentSession;
+    final hasSession = session != null;
+
+    UserModel? initialUser;
+    if (session?.user != null) {
+      initialUser = UserModel.fromMap(session!.user.toJson());
+    }
+
     Future.microtask(() {
       listenToAuthChanges();
-      getCurrentUser();
+      if (hasSession) {
+        getCurrentUser();
+      }
     });
-    // listenToAuthChanges();
 
-    return AuthState(loginState: AsyncState.initial);
+    return AuthState(
+      loginState: AsyncState.initial,
+      session: session,
+      user: initialUser,
+      isAuthenticated: hasSession,
+    );
   }
 
   void toggleLogin() {
@@ -378,6 +391,17 @@ class AuthNotifier extends Notifier<AuthState> {
       Log.info("Auth state changed: ${authState.event}");
 
       switch (authState.event) {
+        case AuthChangeEvent.initialSession:
+          if (authState.session != null) {
+            state = state.copyWith(
+              session: authState.session,
+              isAuthenticated: true,
+            );
+            if (state.user?.id == null) {
+              getCurrentUser();
+            }
+          }
+          break;
         case AuthChangeEvent.signedIn:
           // Only call getCurrentUser() here if we don't already have a
           // user loaded. The signInWithGoogle / signInWithEmail paths
