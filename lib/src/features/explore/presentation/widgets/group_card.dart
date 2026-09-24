@@ -70,13 +70,22 @@ class GroupCard extends ConsumerWidget {
     final iconUrl = _resolveImageUrl(ref, group?.icon) ??
         _resolveImageUrl(ref, group?.thumbnail);
 
-    final price = group?.lifetimePrice != null
-        ? "₹${group!.lifetimePrice}/lifetime"
-        : (group?.monthlyPrice != null
-            ? "₹${group!.monthlyPrice}/month"
-            : (group?.yearlyPrice != null
-                ? "₹${group!.yearlyPrice}/year"
-                : "Free"));
+    final mPrice = group?.monthlyPrice ?? 0;
+    final yPrice = group?.yearlyPrice ?? 0;
+    final lPrice = group?.lifetimePrice ?? 0;
+
+    final String price;
+    if (mPrice <= 0 && yPrice <= 0 && lPrice <= 0) {
+      price = "Free";
+    } else if (mPrice > 0) {
+      price = "₹$mPrice/month";
+    } else if (lPrice > 0) {
+      price = "₹$lPrice/lifetime";
+    } else if (yPrice > 0) {
+      price = "₹$yPrice/year";
+    } else {
+      price = "Free";
+    }
 
     return GestureDetector(
       onTap: () {

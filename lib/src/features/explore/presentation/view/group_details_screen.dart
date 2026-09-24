@@ -14,6 +14,7 @@ import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/features/group/data/models/group_model.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class GroupDetailsScreen extends ConsumerWidget {
   final GroupModel? group;
@@ -198,17 +199,24 @@ class GroupDetailsScreen extends ConsumerWidget {
     final iconUrl = _resolveImageUrl(ref, selectedGroup.icon) ??
         _resolveImageUrl(ref, selectedGroup.thumbnail);
 
-    final isFree = selectedGroup.monthlyPrice == null &&
-        selectedGroup.yearlyPrice == null &&
-        selectedGroup.lifetimePrice == null;
+    final monthly = selectedGroup.monthlyPrice ?? 0;
+    final yearly = selectedGroup.yearlyPrice ?? 0;
+    final lifetime = selectedGroup.lifetimePrice ?? 0;
 
-    final priceLabel = isFree
-        ? "Free"
-        : (selectedGroup.monthlyPrice != null
-            ? "₹${selectedGroup.monthlyPrice}/mo"
-            : (selectedGroup.lifetimePrice != null
-                ? "₹${selectedGroup.lifetimePrice} lifetime"
-                : "₹${selectedGroup.yearlyPrice}/yr"));
+    final isFree = monthly <= 0 && yearly <= 0 && lifetime <= 0;
+
+    final String priceLabel;
+    if (isFree) {
+      priceLabel = "Free";
+    } else if (monthly > 0) {
+      priceLabel = "₹$monthly/mo";
+    } else if (lifetime > 0) {
+      priceLabel = "₹$lifetime lifetime";
+    } else if (yearly > 0) {
+      priceLabel = "₹$yearly/yr";
+    } else {
+      priceLabel = "Free";
+    }
 
     final canEnterDirectly = isFree || isMemberOrOwner;
     final groupSlug = selectedGroup.slug ?? '';
@@ -811,6 +819,7 @@ void _showPlanSelectionSheet(BuildContext context, GroupModel group) {
                       Navigator.of(ctx).pop();
                       _showPaymentSheet(
                         context,
+                        group: group,
                         planName: p['name'] as String,
                         amountINR: p['amount'] as int,
                       );
@@ -926,6 +935,7 @@ Widget _buildPlanCard({
 
 void _showPaymentSheet(
   BuildContext context, {
+  required GroupModel group,
   required String planName,
   required int amountINR,
 }) {
@@ -938,7 +948,8 @@ void _showPaymentSheet(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (ctx) {
-      String method = 'Paymintro';
+      final preferred = group.landingSettings?['preferredGateway'] as String?;
+      String method = (preferred != null && preferred.isNotEmpty) ? preferred : 'Cashfree';
       final promoController = TextEditingController();
 
       return StatefulBuilder(
@@ -1180,12 +1191,78 @@ void _showPaymentSheet(
                     ),
                     AppSizes.sm.ph,
                     AppButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Redirecting to $method secure payment...'),
-                          ),
-                        );
+                      onPressed: () async {
+                        String? paymentUrl;
+                        final landingSettings = group.landingSettings;
+
+                        if (method == 'Cashfree') {
+                          if (landingSettings != null) {
+                            final btn = landingSettings['button'];
+                            if (btn is Map && btn['url'] != null && btn['url'].toString().trim().isNotEmpty) {
+                              paymentUrl = btn['url'].toString().trim();
+                            } else if (landingSettings['paymentUrl'] != null && landingSettings['paymentUrl'].toString().trim().isNotEmpty) {
+                              paymentUrl = landingSettings['paymentUrl'].toString().trim();
+                            }
+                          }
+                        } else {
+                          // Paymintro
+                          if (landingSettings != null && landingSettings['paymintroUrl'] != null && landingSettings['paymintroUrl'].toString().trim().isNotEmpty) {
+                            paymentUrl = landingSettings['paymintroUrl'].toString().trim();
+                          }
+                        }
+
+                        // If no specific payment form was configured by the creator, fallback to group page on web
+                        if (paymentUrl == null || paymentUrl.isEmpty) {
+                          final slug = group.slug ?? group.id;
+                          paymentUrl = "https://www.larnity.com/group/$slug";
+                        }
+
+                        if (!paymentUrl.startsWith('http://') && !paymentUrl.startsWith('https://')) {
+                          paymentUrl = 'https://$paymentUrl';
+                        }
+
+                        final uri = Uri.tryParse(paymentUrl);
+                        if (uri != null) {
+                          Navigator.of(ctx).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Opening $method payment page...'),
+                              duration: const Duration(seconds: 2),
+                              backgroundColor: AppColors.primaryOrange,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          try {
+                            final launched = await launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            );
+                            if (!launched && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Could not open payment link: $paymentUrl'),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error opening payment page: $e'),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
+                          }
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Invalid payment link configured for this group.'),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
                       },
                       label: 'Pay Securely with $method',
                       labelStyle: AppTextStyles.bodyText2(color: AppColors.black).copyWith(
