@@ -82,7 +82,7 @@ class GroupCard extends ConsumerWidget {
       onTap: () {
         if (group != null) {
           ref.read(groupProvider.notifier).setSelectedGroup(group);
-          context.pushNamed(Routes.groupDetails);
+          context.pushNamed(Routes.groupDetails, extra: group);
         }
       },
       child: Card(

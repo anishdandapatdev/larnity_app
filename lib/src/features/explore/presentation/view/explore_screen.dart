@@ -94,20 +94,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     return Scaffold(
       key: widget.scaffoldKey,
       backgroundColor: AppColors.black,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            colors: [
-              AppColors.darkBrown.withValues(alpha: 0.3),
-              AppColors.black,
-            ],
-            center: Alignment.topCenter,
-            radius: 1.2,
+      body: SafeArea(
+        bottom: false,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              colors: [
+                AppColors.darkBrown.withValues(alpha: 0.3),
+                AppColors.black,
+              ],
+              center: Alignment.topCenter,
+              radius: 1.2,
+            ),
           ),
-        ),
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
               child: Stack(
                 children: [
                   // Spotlight effect behind the search bar
@@ -217,6 +219,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             // ),
           ],
         ),
+      ),
       ),
     );
   }
