@@ -1,14 +1,11 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:larnity/src/core/constants/app_assets.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
-import 'package:larnity/src/core/constants/app_strings.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
 import 'package:larnity/src/core/extensions/path_extension.dart';
-import 'package:larnity/src/core/extensions/screen_size_extension.dart';
 import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
@@ -71,103 +68,7 @@ class ExploreNestedRoute extends ConsumerWidget {
 
     return Scaffold(
       key: _scaffoldKey,
-      appBar: isHome
-          ? AppBar(
-              title: Image.asset(AppAssets.images.logoWhite, width: 100),
-              centerTitle: false,
-              leading: Builder(
-                builder: (context) => IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () {
-                    Scaffold.of(context).openEndDrawer();
-                  },
-                ),
-              ),
-        actions: [
-          GestureDetector(
-            onTap: () {
-              // Navigate to notification screen when icon is tapped
-              context.pushNamed(Routes.notification);
-            },
-            child: AppDropdown(
-              controller: _larnityDropdownController,
-              button: HugeIcon(
-                icon: HugeIconsStrokeRounded.notification01,
-                color: Colors.grey,
-              ),
-              overlayWidth: 0.9.sw,
-              overlayAlignment: Alignment.centerRight,
-              overlayHeight: 260,
-              top: Padding(
-                padding: const EdgeInsets.all(AppSizes.xs),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          "Notifications",
-                          style: AppTextStyles.button().copyWith(
-                            fontWeight: AppFontWeights.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    AppSizes.xs.ph,
-                    RichText(
-                      text: TextSpan(
-                        text: AppStrings.markAllAsRead,
-                        style: AppTextStyles.subtitle2(
-                          color: AppColors.primaryOrange,
-                        ),
-                        recognizer: TapGestureRecognizer()..onTap = () {},
-                      ),
-                    ),
-                    AppSizes.xs.ph,
-                    AppDropdown(
-                      button: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSizes.xs,
-                          vertical: AppSizes.xxs,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: AppColors.borderBrown),
-                          borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: const [
-                            Text("All groups"),
-                            Icon(Icons.keyboard_arrow_down),
-                          ],
-                        ),
-                      ),
-                      items: [
-                        AppDropdownItem(value: 'all', label: "All groups"),
-                      ],
-                    ),
-                    Divider(color: AppColors.borderBrown),
-                  ],
-                ),
-              ),
-              bottom: Column(
-                children: [
-                  Divider(color: AppColors.borderBrown),
-                  TextButton(
-                    onPressed: () {
-                      context.pushNamed(Routes.notification);
-                    },
-                    child: const Text("See all notifications(0)"),
-                  ),
-                ],
-              ),
-              items: [],
-            ),
-          ),
-          AppSizes.xs.pw,
-        ],
-      )
-    : null,
+      appBar: null,
       endDrawer: isHome
           ? Drawer(
               child: ListView(

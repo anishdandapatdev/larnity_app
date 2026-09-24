@@ -18,6 +18,7 @@ import 'package:larnity/src/features/auth/presentation/view/change_password_scre
 import 'package:larnity/src/features/explore/presentation/view/explore_screen.dart';
 import 'package:larnity/src/features/explore/presentation/view/notification_screen.dart';
 import 'package:larnity/src/features/explore/presentation/view/group_details_screen.dart';
+import 'package:larnity/src/features/group/data/models/group_model.dart';
 import 'package:larnity/src/features/group/presentation/views/group_home_screen.dart';
 import 'package:larnity/src/features/group/presentation/views/chatting_screen.dart';
 import 'package:larnity/src/features/group/presentation/views/discussion_room_screen.dart';

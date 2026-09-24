@@ -51,26 +51,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       ref.watch(supabaseClientProvider).auth.onAuthStateChange,
     ),
     redirect: (context, state) {
-      // We'll handle redirection logic here based on auth state
-      // final appUserCubit = context.read<AppUserCubit>();
-
-      // final isLoggedIn = appUserCubit.state is AppUserLoggedIn;
       final isLoggedIn = authState.isAuthenticated;
-      // final isAuthRoute = state.matchedLocation == Routes.auth.p;
+      final isAuthRoute = state.matchedLocation == Routes.auth.p;
       final isExploreRoute = state.matchedLocation == Routes.explore.p;
 
-      Log.info("Is Logged in: $isLoggedIn");
-      // Log.info("Is Login: ${state.matchedLocation}");
-      // Log.info("Is Explore: ${state.matchedLocation == Routes.explore.p}");
-      // If the user is not logged in and not on the login route, redirect to login
+      Log.info("Is Logged in: $isLoggedIn (location: ${state.matchedLocation})");
+
+      // If the user is not logged in and trying to access explore, redirect to auth
       if (!isLoggedIn && isExploreRoute) {
         return Routes.auth.p;
       }
 
       // If the user is logged in and on the login route, redirect to explore
-      // if (isLoggedIn && isAuthRoute) {
-      //   return Routes.explore.p;
-      // }
+      if (isLoggedIn && isAuthRoute) {
+        return Routes.explore.p;
+      }
 
       // No redirection needed
       return null;
@@ -249,7 +244,9 @@ GoRoute _buildGroupDetailsScreenRoute() => GoRoute(
   name: Routes.groupDetails,
   path: Routes.groupDetails.p,
   pageBuilder: _getDefaultPageBuilderByPlatform(
-    childBuilder: (_, state) => GroupDetailsScreen(),
+    childBuilder: (_, state) => GroupDetailsScreen(
+      group: state.extra as GroupModel?,
+    ),
   ),
 );
 
