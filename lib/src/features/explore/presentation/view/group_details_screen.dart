@@ -463,7 +463,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                   else
                     AppButton(
                       onPressed: () {
-                        _showPlanSelectionSheet(context);
+                        _showPlanSelectionSheet(context, selectedGroup);
                       },
                       label: "Join Community • $priceLabel",
                       labelStyle: AppTextStyles.bodyText2(color: AppColors.black).copyWith(
@@ -694,218 +694,519 @@ class GroupDetailsScreen extends ConsumerWidget {
   }
 }
 
-void _showPlanSelectionSheet(BuildContext context) {
+void _showPlanSelectionSheet(BuildContext context, GroupModel group) {
   showModalBottomSheet(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: AppColors.darkBgContainer,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.xs)),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (ctx) {
-      return Padding(
-        padding: EdgeInsets.fromLTRB(AppSizes.xs, AppSizes.sm, AppSizes.xs, AppSizes.sm),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      final monthly = group.monthlyPrice;
+      final yearly = group.yearlyPrice;
+      final lifetime = group.lifetimePrice;
+
+      final plans = <Map<String, dynamic>>[];
+      if (monthly != null && monthly > 0) {
+        plans.add({
+          'name': 'Monthly Plan',
+          'amount': monthly,
+          'formattedPrice': '₹$monthly',
+          'subtitle': 'Billed every month, cancel anytime',
+          'isRecommended': false,
+        });
+      }
+      if (yearly != null && yearly > 0) {
+        plans.add({
+          'name': 'Yearly Plan',
+          'amount': yearly,
+          'formattedPrice': '₹$yearly',
+          'subtitle': 'Billed annually, save more',
+          'isRecommended': false,
+        });
+      }
+      if (lifetime != null && lifetime > 0) {
+        plans.add({
+          'name': 'Lifetime Access',
+          'amount': lifetime,
+          'formattedPrice': '₹$lifetime',
+          'subtitle': 'One-time payment, access forever',
+          'isRecommended': true,
+        });
+      }
+
+      if (plans.isEmpty) {
+        plans.add({
+          'name': 'Full Access',
+          'amount': 999,
+          'formattedPrice': '₹999',
+          'subtitle': 'Standard community membership',
+          'isRecommended': true,
+        });
+      }
+
+      return SafeArea(
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppSizes.sm,
+              AppSizes.xs,
+              AppSizes.sm,
+              AppSizes.md,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Choose a plan',
-                  style: AppTextStyles.headline4(),
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: AppSizes.xs),
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  color: AppColors.creamWhite,
-                  onPressed: () => Navigator.of(ctx).pop(),
-                ),
-              ],
-            ),
-            AppSizes.xs.ph,
-            Text(
-              'Select a plan to join this community',
-              style: AppTextStyles.overLine(),
-            ),
-            AppSizes.sm.ph,
-            InkWell(
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _showPaymentSheet(context, planName: 'Lifetime', amountINR: 999);
-              },
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(AppSizes.xs),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                  border: Border.all(color: AppColors.borderBrown),
-                  color: AppColors.black,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Lifetime', style: AppTextStyles.headline5()),
-                    AppSizes.xxxs.ph,
-                    Text('₹999', style: AppTextStyles.headline4()),
-                    AppSizes.xxxs.ph,
                     Text(
-                      'One-time payment, access forever',
-                      style: AppTextStyles.overLine(),
+                      'Choose a Plan',
+                      style: AppTextStyles.headline4(color: AppColors.white).copyWith(
+                        fontWeight: AppFontWeights.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppColors.creamWhite),
+                      onPressed: () => Navigator.of(ctx).pop(),
                     ),
                   ],
                 ),
-              ),
+                AppSizes.xxs.ph,
+                Text(
+                  'Select a plan to join ${group.name}',
+                  style: AppTextStyles.overLine(
+                    color: AppColors.creamWhite.withValues(alpha: 0.7),
+                  ),
+                ),
+                AppSizes.sm.ph,
+                ...plans.map((p) {
+                  return _buildPlanCard(
+                    title: p['name'] as String,
+                    price: p['formattedPrice'] as String,
+                    subtitle: p['subtitle'] as String,
+                    isRecommended: p['isRecommended'] as bool,
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      _showPaymentSheet(
+                        context,
+                        planName: p['name'] as String,
+                        amountINR: p['amount'] as int,
+                      );
+                    },
+                  );
+                }),
+              ],
             ),
-            AppSizes.sm.ph,
-          ],
+          ),
         ),
       );
     },
   );
 }
 
-void _showPaymentSheet(BuildContext context, {required String planName, required int amountINR}) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: AppColors.darkBgContainer,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.xs)),
-    ),
-    builder: (ctx) {
-      return StatefulBuilder(
-        builder: (ctx, setState) {
-          String method = 'Paymintro';
-          return Padding(
-            padding: EdgeInsets.fromLTRB(AppSizes.xs, AppSizes.sm, AppSizes.xs, AppSizes.sm),
+Widget _buildPlanCard({
+  required String title,
+  required String price,
+  required String subtitle,
+  required bool isRecommended,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(AppSizes.xxs),
+    child: Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: AppSizes.xs),
+      padding: const EdgeInsets.all(AppSizes.sm),
+      decoration: BoxDecoration(
+        color: AppColors.black,
+        borderRadius: BorderRadius.circular(AppSizes.xxs),
+        border: Border.all(
+          color: isRecommended
+              ? AppColors.primaryOrange
+              : AppColors.borderBrown.withValues(alpha: 0.6),
+          width: isRecommended ? 1.5 : 1.0,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Payment', style: AppTextStyles.headline4()),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      color: AppColors.creamWhite,
-                      onPressed: () => Navigator.of(ctx).pop(),
+                    Text(
+                      title,
+                      style: AppTextStyles.headline5(color: AppColors.white).copyWith(
+                        fontWeight: AppFontWeights.bold,
+                      ),
                     ),
-                  ],
-                ),
-                AppSizes.xs.ph,
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(AppSizes.xs),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                    border: Border.all(color: AppColors.borderBrown),
-                    color: AppColors.black,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('$planName Plan', style: AppTextStyles.headline5()),
-                      AppSizes.xxxs.ph,
-                      Text('₹$amountINR for $planName', style: AppTextStyles.bodyText2()),
-                    ],
-                  ),
-                ),
-                AppSizes.sm.ph,
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Enter promo code',
-                          filled: true,
-                          fillColor: AppColors.black,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                            borderSide: BorderSide(color: AppColors.borderBrown),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                            borderSide: BorderSide(color: AppColors.borderBrown),
+                    if (isRecommended) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryOrange,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          "RECOMMENDED",
+                          style: AppTextStyles.overLine(color: AppColors.black).copyWith(
+                            fontWeight: AppFontWeights.bold,
+                            fontSize: 9,
                           ),
                         ),
-                        style: AppTextStyles.bodyText2(),
                       ),
-                    ),
-                    AppSizes.xxxs.pw,
-                    AppButton(
-                      isExpanded: false,
-                      height: 48,
-                      onPressed: () {},
-                      label: 'Apply',
-                      labelStyle: AppTextStyles.bodyText2(color: AppColors.white),
-                      bgColor: AppColors.black,
-                      borderColor: AppColors.white,
-                      radius: AppSizes.xxxs,
-                    ),
+                    ],
                   ],
                 ),
-                AppSizes.sm.ph,
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        isExpanded: true,
-                        onPressed: () {
-                          setState(() => method = 'Paymintro');
-                        },
-                        label: 'Paymintro',
-                        labelStyle: AppTextStyles.bodyText2(color: AppColors.white),
-                        bgColor: method == 'Paymintro' ? AppColors.purple : AppColors.black,
-                        borderColor: AppColors.white,
-                        radius: AppSizes.xxxs,
-                      ),
-                    ),
-                    AppSizes.xxxs.pw,
-                    Expanded(
-                      child: AppButton(
-                        isExpanded: true,
-                        onPressed: () {
-                          setState(() => method = 'Cashfree');
-                        },
-                        label: 'Cashfree',
-                        labelStyle: AppTextStyles.bodyText2(color: AppColors.white),
-                        bgColor: method == 'Cashfree' ? AppColors.purple : AppColors.black,
-                        borderColor: AppColors.white,
-                        radius: AppSizes.xxxs,
-                      ),
-                    ),
-                  ],
-                ),
-                AppSizes.sm.ph,
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Total Amount:', style: AppTextStyles.bodyText2()),
-                    Text('₹${amountINR.toStringAsFixed(0)}', style: AppTextStyles.headline5()),
-                  ],
-                ),
-                AppSizes.xs.ph,
-                AppButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Redirecting to $method secure payment...')),
-                    );
-                  },
-                  label: 'Pay Securely with $method',
-                  labelStyle: AppTextStyles.bodyText2(color: AppColors.white),
-                  bgColor: AppColors.purple,
-                  radius: AppSizes.xxxs,
-                ),
-                AppSizes.xxxs.ph,
-                Center(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: Text('Back', style: AppTextStyles.bodyText2()),
+                AppSizes.xxs.ph,
+                Text(
+                  subtitle,
+                  style: AppTextStyles.overLine(
+                    color: AppColors.creamWhite.withValues(alpha: 0.7),
                   ),
                 ),
               ],
+            ),
+          ),
+          AppSizes.xs.pw,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                price,
+                style: AppTextStyles.headline4(color: AppColors.primaryOrange).copyWith(
+                  fontWeight: AppFontWeights.bold,
+                ),
+              ),
+              AppSizes.xxxs.ph,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Select",
+                    style: AppTextStyles.overLine(color: AppColors.primaryOrange),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.arrow_forward_ios, size: 10, color: AppColors.primaryOrange),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+void _showPaymentSheet(
+  BuildContext context, {
+  required String planName,
+  required int amountINR,
+}) {
+  showModalBottomSheet(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    backgroundColor: AppColors.darkBgContainer,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) {
+      String method = 'Paymintro';
+      final promoController = TextEditingController();
+
+      return StatefulBuilder(
+        builder: (ctx, setState) {
+          return SafeArea(
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.88,
+              ),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSizes.sm,
+                  AppSizes.xs,
+                  AppSizes.sm,
+                  AppSizes.md,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: AppSizes.xs),
+                        decoration: BoxDecoration(
+                          color: AppColors.white.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Payment Details',
+                          style: AppTextStyles.headline4(color: AppColors.white).copyWith(
+                            fontWeight: AppFontWeights.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: AppColors.creamWhite),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                        ),
+                      ],
+                    ),
+                    AppSizes.xs.ph,
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSizes.sm),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppSizes.xxs),
+                        border: Border.all(color: AppColors.borderBrown),
+                        color: AppColors.black,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                planName,
+                                style: AppTextStyles.headline5(color: AppColors.white).copyWith(
+                                  fontWeight: AppFontWeights.bold,
+                                ),
+                              ),
+                              AppSizes.xxxs.ph,
+                              Text(
+                                'Community Membership',
+                                style: AppTextStyles.overLine(
+                                  color: AppColors.creamWhite.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '₹$amountINR',
+                            style: AppTextStyles.headline4(color: AppColors.primaryOrange).copyWith(
+                              fontWeight: AppFontWeights.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AppSizes.sm.ph,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: promoController,
+                            decoration: InputDecoration(
+                              hintText: 'Enter promo code',
+                              hintStyle: AppTextStyles.overLine(
+                                color: AppColors.creamWhite.withValues(alpha: 0.5),
+                              ),
+                              filled: true,
+                              fillColor: AppColors.black,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                                borderSide: const BorderSide(color: AppColors.borderBrown),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                                borderSide: const BorderSide(color: AppColors.borderBrown),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                                borderSide: const BorderSide(color: AppColors.primaryOrange),
+                              ),
+                            ),
+                            style: AppTextStyles.bodyText2(color: AppColors.white),
+                          ),
+                        ),
+                        AppSizes.xxs.pw,
+                        AppButton(
+                          isExpanded: false,
+                          height: 48,
+                          onPressed: () {
+                            if (promoController.text.trim().isNotEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Invalid promo code')),
+                              );
+                            }
+                          },
+                          label: 'Apply',
+                          labelStyle: AppTextStyles.bodyText2(color: AppColors.white),
+                          bgColor: AppColors.black,
+                          borderColor: AppColors.white,
+                          radius: AppSizes.xxxs,
+                        ),
+                      ],
+                    ),
+                    AppSizes.sm.ph,
+                    Text(
+                      'Payment Method',
+                      style: AppTextStyles.subtitle2(color: AppColors.white).copyWith(
+                        fontWeight: AppFontWeights.bold,
+                      ),
+                    ),
+                    AppSizes.xs.ph,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => method = 'Paymintro'),
+                            borderRadius: BorderRadius.circular(AppSizes.xxs),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              decoration: BoxDecoration(
+                                color: method == 'Paymintro'
+                                    ? AppColors.primaryOrange.withValues(alpha: 0.2)
+                                    : AppColors.black,
+                                borderRadius: BorderRadius.circular(AppSizes.xxs),
+                                border: Border.all(
+                                  color: method == 'Paymintro'
+                                      ? AppColors.primaryOrange
+                                      : AppColors.borderBrown,
+                                  width: method == 'Paymintro' ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Paymintro',
+                                  style: AppTextStyles.bodyText2(
+                                    color: method == 'Paymintro'
+                                        ? AppColors.primaryOrange
+                                        : AppColors.white,
+                                  ).copyWith(fontWeight: AppFontWeights.bold),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        AppSizes.xs.pw,
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => method = 'Cashfree'),
+                            borderRadius: BorderRadius.circular(AppSizes.xxs),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              decoration: BoxDecoration(
+                                color: method == 'Cashfree'
+                                    ? AppColors.primaryOrange.withValues(alpha: 0.2)
+                                    : AppColors.black,
+                                borderRadius: BorderRadius.circular(AppSizes.xxs),
+                                border: Border.all(
+                                  color: method == 'Cashfree'
+                                      ? AppColors.primaryOrange
+                                      : AppColors.borderBrown,
+                                  width: method == 'Cashfree' ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Cashfree',
+                                  style: AppTextStyles.bodyText2(
+                                    color: method == 'Cashfree'
+                                        ? AppColors.primaryOrange
+                                        : AppColors.white,
+                                  ).copyWith(fontWeight: AppFontWeights.bold),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    AppSizes.sm.ph,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.black,
+                        borderRadius: BorderRadius.circular(AppSizes.xxs),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total Amount:',
+                            style: AppTextStyles.bodyText1(color: AppColors.creamWhite),
+                          ),
+                          Text(
+                            '₹${amountINR.toStringAsFixed(0)}',
+                            style: AppTextStyles.headline4(color: AppColors.primaryOrange).copyWith(
+                              fontWeight: AppFontWeights.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AppSizes.sm.ph,
+                    AppButton(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Redirecting to $method secure payment...'),
+                          ),
+                        );
+                      },
+                      label: 'Pay Securely with $method',
+                      labelStyle: AppTextStyles.bodyText2(color: AppColors.black).copyWith(
+                        fontWeight: AppFontWeights.bold,
+                      ),
+                      bgColor: AppColors.primaryOrange,
+                      radius: AppSizes.xxs,
+                    ),
+                    AppSizes.xxs.ph,
+                    Center(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: Text(
+                          'Cancel',
+                          style: AppTextStyles.bodyText2(color: AppColors.creamWhite),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         },
