@@ -223,7 +223,7 @@ class GroupDetailsScreen extends ConsumerWidget {
       priceLabel = "Free";
     }
 
-    final canEnterDirectly = isFree || isMemberOrOwner;
+    final canEnterDirectly = isMemberOrOwner;
     final groupSlug = selectedGroup.slug ?? '';
     final groupUrl = groupSlug.isNotEmpty
         ? "https://www.larnity.com/group/$groupSlug"
@@ -467,6 +467,60 @@ class GroupDetailsScreen extends ConsumerWidget {
                         context.pushNamed(Routes.group);
                       },
                       label: "Enter Community",
+                      labelStyle: AppTextStyles.bodyText2(color: AppColors.black).copyWith(
+                        fontWeight: AppFontWeights.bold,
+                      ),
+                      bgColor: AppColors.primaryOrange,
+                      radius: AppSizes.xxs,
+                    )
+                  else if (isFree)
+                    AppButton(
+                      onPressed: () async {
+                        final authUser = ref.read(authProvider).user;
+                        final effectiveUserId = authUser?.id ?? ref.read(supabaseClientProvider).auth.currentUser?.id;
+                        if (effectiveUserId == null) {
+                          showErrorToast(content: 'Please sign in to join this community');
+                          context.pushNamed(Routes.auth);
+                          return;
+                        }
+
+                        final member = MemberModel(
+                          groupId: selectedGroup.id!,
+                          userId: effectiveUserId,
+                          subscriptionStartDate: DateTime.now(),
+                          isActive: true,
+                          planType: 'FREE',
+                          planPrice: 0,
+                          role: 'MEMBER',
+                        );
+
+                        final joinRes = await ref
+                            .read(memberDataSourceProvider)
+                            .addOrUpdateMember(member: member);
+
+                        await joinRes.fold(
+                          (failure) async {
+                            showErrorToast(
+                              content: 'Failed to join group: ${failure.message}',
+                            );
+                          },
+                          (joined) async {
+                            await ref
+                                .read(groupProvider.notifier)
+                                .getGroupsByUser(userId: effectiveUserId);
+                            ref
+                                .read(groupProvider.notifier)
+                                .setSelectedGroup(selectedGroup);
+                            showSuccessToast(
+                              content: '🎉 Welcome to ${selectedGroup.name}!',
+                            );
+                            if (context.mounted) {
+                              context.pushNamed(Routes.group);
+                            }
+                          },
+                        );
+                      },
+                      label: "Join Community (Free)",
                       labelStyle: AppTextStyles.bodyText2(color: AppColors.black).copyWith(
                         fontWeight: AppFontWeights.bold,
                       ),
@@ -1220,8 +1274,9 @@ void _showPaymentSheet(
                       onPressed: isSubmittingPayment
                           ? () {}
                           : () async {
-                              final user = ref.read(authProvider).user;
-                              if (user == null || user.id == null) {
+                              final authUser = ref.read(authProvider).user;
+                              final effectiveUserId = authUser?.id ?? ref.read(supabaseClientProvider).auth.currentUser?.id;
+                              if (effectiveUserId == null) {
                                 showErrorToast(content: 'Please sign in to join this community');
                                 context.pushNamed(Routes.auth);
                                 return;
@@ -1246,7 +1301,7 @@ void _showPaymentSheet(
 
                                 final member = MemberModel(
                                   groupId: groupId,
-                                  userId: user.id!,
+                                  userId: effectiveUserId,
                                   subscriptionStartDate: now,
                                   subscriptionEndDate: endDate,
                                   isActive: true,
@@ -1261,6 +1316,9 @@ void _showPaymentSheet(
 
                                 await joinRes.fold(
                                   (failure) async {
+                                    if (ctx.mounted) {
+                                      setState(() => isSubmittingPayment = false);
+                                    }
                                     showErrorToast(
                                       content:
                                           'Failed to join group: ${failure.message}',
@@ -1269,7 +1327,7 @@ void _showPaymentSheet(
                                   (joined) async {
                                     await ref
                                         .read(groupProvider.notifier)
-                                        .getGroupsByUser(userId: user.id!);
+                                        .getGroupsByUser(userId: effectiveUserId);
                                     ref
                                         .read(groupProvider.notifier)
                                         .setSelectedGroup(group);
@@ -1289,26 +1347,35 @@ void _showPaymentSheet(
 
                               final uniqueId = DateTime.now().millisecondsSinceEpoch.toString();
                               final sanitizedGroupId = groupId.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').padRight(6, '0').substring(0, 6);
-                              final sanitizedUserId = user.id!.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').padRight(6, '0').substring(0, 6);
+                              final sanitizedUserId = effectiveUserId.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').padRight(6, '0').substring(0, 6);
                               final linkId = 'lrn_${sanitizedGroupId}_${sanitizedUserId}_$uniqueId';
+
+                              final currentUser = ref.read(supabaseClientProvider).auth.currentUser;
+                              final customerName = '${authUser?.firstName ?? ''} ${authUser?.lastName ?? ''}'.trim().isNotEmpty
+                                  ? '${authUser?.firstName ?? ''} ${authUser?.lastName ?? ''}'.trim()
+                                  : (currentUser?.email?.split('@').first ?? 'Member');
+                              final customerEmail = authUser?.email ?? currentUser?.email ?? 'member@larnity.com';
+                              final customerPhone = authUser?.phoneNumber ?? currentUser?.phone ?? '9999999999';
 
                               final res = await ref.read(cashfreeServiceProvider).createPaymentLink(
                                 linkId: linkId,
                                 amount: finalPayableINR.toDouble(),
                                 purpose: 'Join ${group.name} - $planName',
-                                customerId: user.id!,
-                                customerName: '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim(),
-                                customerEmail: user.email ?? 'member@larnity.com',
-                                customerPhone: user.phoneNumber ?? '9999999999',
+                                customerId: effectiveUserId,
+                                customerName: customerName,
+                                customerEmail: customerEmail,
+                                customerPhone: customerPhone,
                                 notes: {
                                   'groupId': groupId,
-                                  'userId': user.id ?? '',
+                                  'userId': effectiveUserId,
                                   'planName': planName,
                                   'amount': finalPayableINR.toString(),
                                 },
                               );
 
-                              setState(() => isSubmittingPayment = false);
+                              if (ctx.mounted) {
+                                setState(() => isSubmittingPayment = false);
+                              }
 
                               await res.fold(
                                 (failure) async {

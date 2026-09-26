@@ -15,7 +15,8 @@ final groupProvider = NotifierProvider<GroupNotifier, GroupState>(
 /// Checks whether the currently logged-in user is the owner or an admin of the active group.
 final isGroupAdminOrOwnerProvider = Provider<bool>((ref) {
   final group = ref.watch(groupProvider).group;
-  final currentUserId = ref.watch(authProvider).user?.id;
+  final currentUserId = ref.watch(authProvider).user?.id ??
+      ref.watch(supabaseClientProvider).auth.currentUser?.id;
   if (group == null || currentUserId == null || currentUserId.isEmpty) {
     return false;
   }
