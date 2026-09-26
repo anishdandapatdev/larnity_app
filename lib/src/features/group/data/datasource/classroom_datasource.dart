@@ -118,7 +118,7 @@ class ClassroomDataSource {
     try {
       final response = await supabaseClient
           .from(SupabaseTable.course)
-          .update(course.toMap())
+          .update(course.toMapWithId())
           .eq('id', course.id!)
           .select()
           .single();

@@ -128,6 +128,38 @@ class ClassroomNotifier
     });
   }
 
+  Future<void> updateCourse({
+    required CourseModel course,
+    void Function()? successCallBack,
+    void Function(String error)? failureCallBack,
+  }) async {
+    final ds = ref.read(classroomDataSourceProvider);
+    state = state.copyWith(createState: AsyncState.loading);
+    final result = await ds.updateCourse(course: course);
+    result.fold(
+      (failure) {
+        state = state.copyWith(
+          createState: AsyncState.failure,
+          error: failure.message,
+        );
+        failureCallBack?.call(failure.message);
+      },
+      (updated) {
+        // Replace course in list
+        final updatedList = state.courses?.map((c) {
+          return c.id == updated.id ? updated : c;
+        }).toList();
+        state = state.copyWith(
+          createState: AsyncState.success,
+          courses: updatedList,
+          selectedCourse:
+              state.selectedCourse?.id == updated.id ? updated : state.selectedCourse,
+        );
+        successCallBack?.call();
+      },
+    );
+  }
+
   // ── Module ──
 
   Future<void> createModule({

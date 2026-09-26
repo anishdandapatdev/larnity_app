@@ -66,13 +66,20 @@ class CourseModel extends Equatable {
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
-      'id': id,
       'groupId': groupId,
       'name': title,
       'description': description,
-      'thumbnail': image ?? "",
+      'thumbnail': image ?? '',
       'privacy': (isPaid ?? false) ? 'PAID' : 'PUBLIC',
       'price': price,
+      'is_published': isPublished ?? true,
+    }..removeWhere((key, value) => value == null);
+  }
+
+  Map<String, dynamic> toMapWithId() {
+    return <String, dynamic>{
+      'id': id,
+      ...toMap(),
     }..removeWhere((key, value) => value == null);
   }
 
