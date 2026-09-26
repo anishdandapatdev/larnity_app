@@ -92,6 +92,43 @@ class MemberDataSource {
     }
   }
 
+  /// Add or update membership for a user in a group (idempotent for renewals and re-subscriptions).
+  Future<Either<Failure, MemberModel>> addOrUpdateMember({
+    required MemberModel member,
+  }) async {
+    try {
+      final existingRes = await getMemberByUserId(
+        groupId: member.groupId,
+        userId: member.userId,
+      );
+
+      return await existingRes.fold(
+        (failure) => addMember(member: member),
+        (existing) async {
+          if (existing != null && existing.id != null) {
+            final updateData = member.toMap()..remove('id');
+            final response = await supabaseClient
+                .from(SupabaseTable.members)
+                .update(updateData)
+                .eq('id', existing.id!)
+                .select('*, profiles(*)')
+                .single();
+            final updated = MemberModel.fromMap(response);
+            Log.info(
+              'Updated existing membership for ${updated.userId} in group ${updated.groupId}',
+            );
+            return Right(updated);
+          } else {
+            return addMember(member: member);
+          }
+        },
+      );
+    } catch (e) {
+      Log.error('addOrUpdateMember error: $e');
+      return Left(Failure(e.toString()));
+    }
+  }
+
   /// Update a member's role.
   Future<Either<Failure, MemberModel>> updateMemberRole({
     required String memberId,
