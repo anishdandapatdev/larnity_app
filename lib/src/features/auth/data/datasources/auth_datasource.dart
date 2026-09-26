@@ -1,8 +1,6 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:larnity/src/core/env/env.dart';
 import 'package:larnity/src/core/error/failures.dart';
 import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
 import 'package:larnity/src/core/utils/logger.dart';
@@ -60,46 +58,18 @@ class AuthDatasource {
   //     return left(Failure(e.toString()));
   //   }
   // }
-  Future<Either<Failure, UserModel>> signInWithGoogle() async {
+  /// Supabase OAuth Sign-In with Google.
+  /// Authenticates directly via Supabase OAuth and redirects back to the app,
+  /// bypassing Android Google Play Services Credential Manager / SHA-1 requirements.
+  Future<Either<Failure, bool>> signInWithGoogle() async {
     try {
-      await GoogleSignIn.instance.initialize(
-        clientId: AppEnv.googleClientId,
-        serverClientId: AppEnv.googleServerId,
+      Log.info("Starting Supabase Google OAuth sign-in...");
+      final success = await supabaseClient.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: kIsWeb ? null : 'io.supabase.larnity://login-callback',
+        authScreenLaunchMode: LaunchMode.externalApplication,
       );
-
-      final GoogleSignInAccount googleUser = await GoogleSignIn.instance
-          .authenticate(scopeHint: const <String>['email', 'profile']);
-
-      final idToken = googleUser.authentication.idToken;
-
-      if (idToken == null) {
-        return left(Failure("Failed to get Google ID token"));
-      }
-
-      final headers = await googleUser.authorizationClient.authorizationHeaders(
-        const <String>['email', 'profile'],
-      );
-
-      final accessToken = headers?['Authorization']?.replaceAll('Bearer ', '');
-
-      final response = await supabaseClient.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: idToken,
-        accessToken: accessToken,
-      );
-      debugPrint('Google respone ====>${response.user!.toJson()}');
-      if (response.user == null) {
-        return left(Failure("Google sign-in failed — no user returned"));
-      }
-
-      Log.info("Google sign-in success: ${response.user!.email}");
-      return right(UserModel.fromMap(response.user!.toJson()));
-    } on GoogleSignInException catch (e) {
-      // Catch specific plugin exceptions (e.g. user cancellations)
-      Log.error("Google sign-in plugin exception: ${e.description}");
-      return left(
-        Failure(e.description ?? "Google sign-in cancelled or failed"),
-      );
+      return right(success);
     } on AuthException catch (e) {
       Log.error("Google sign-in AuthException: ${e.message}");
       return left(Failure(e.message));
@@ -208,7 +178,20 @@ class AuthDatasource {
             .select()
             .eq('id', currentUserSession!.user.id);
         if (userData.isEmpty) {
-          return left(Failure("Profile not found"));
+          // If profile does not exist yet (e.g. brand new user via OAuth), create it from session user metadata
+          final userModel = UserModel.fromMap(
+            currentUserSession!.user.toJson(),
+          );
+          final inserted = await supabaseClient
+              .from('profiles')
+              .upsert(userModel.toMap(), onConflict: 'id')
+              .select();
+          final resolvedUser = inserted.isNotEmpty
+              ? UserModel.fromMap(inserted.first).copyWith(
+                  email: currentUserSession!.user.email,
+                )
+              : userModel;
+          return right(resolvedUser);
         }
 
         return right(

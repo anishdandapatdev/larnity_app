@@ -1,4 +1,5 @@
 // services/supabase_auth_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAuthService {
@@ -34,7 +35,8 @@ class SupabaseAuthService {
   Future<bool> signInWithGoogle() async {
     return await _supabaseClient.auth.signInWithOAuth(
       OAuthProvider.google,
-      redirectTo: 'your-app-scheme://login-callback',
+      redirectTo: kIsWeb ? null : 'io.supabase.larnity://login-callback',
+      authScreenLaunchMode: LaunchMode.externalApplication,
     );
   }
 

@@ -8,7 +8,6 @@ import 'package:larnity/src/core/utils/async_states.dart';
 import 'package:larnity/src/core/utils/logger.dart';
 import 'package:larnity/src/features/auth/data/datasources/auth_datasource.dart';
 import 'package:larnity/src/features/auth/data/models/user_model.dart';
-import 'package:larnity/src/features/profile/data/datasource/profile_datasource.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(
@@ -105,11 +104,21 @@ class AuthNotifier extends Notifier<AuthState> {
         currentUserState: AsyncState.failure,
         isAuthenticated: false,
       ),
-      (user) => state = state.copyWith(
-        currentUserState: AsyncState.success,
-        isAuthenticated: true,
-        user: user,
-      ),
+      (user) {
+        if (user != null) {
+          ref.read(userCacheServiceProvider).saveUser(
+                firstName: user.firstName,
+                lastName: user.lastName,
+                image: user.image,
+                phoneNumber: user.phoneNumber,
+              );
+        }
+        state = state.copyWith(
+          currentUserState: AsyncState.success,
+          isAuthenticated: true,
+          user: user,
+        );
+      },
     );
   }
 
@@ -346,13 +355,12 @@ class AuthNotifier extends Notifier<AuthState> {
   //   }
   // }
 
-  // Sign in with Google
+  // Sign in with Google (Supabase OAuth)
   Future<void> signInWithGoogle({
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
     final datasource = ref.read(authDataSourceProvider);
-    final profileDataSource = ref.read(profileDataSourceProvider);
     state = state.copyWith(loginState: AsyncState.loading);
 
     final response = await datasource.signInWithGoogle();
@@ -366,18 +374,10 @@ class AuthNotifier extends Notifier<AuthState> {
         );
         failureCallBack?.call(failure.message);
       },
-      (user) async {
-        await profileDataSource.createProfile(user: user);
-        await getCurrentUser();
-        ref
-            .read(userCacheServiceProvider)
-            .saveUser(
-              firstName: user.firstName,
-              lastName: user.lastName,
-              image: user.image,
-              phoneNumber: user.phoneNumber,
-            );
-
+      (launched) {
+        // OAuth browser launched. Revert loading state so button isn't stuck
+        // if user closes browser and returns to the app.
+        state = state.copyWith(loginState: AsyncState.initial);
         successCallBack?.call();
       },
     );
