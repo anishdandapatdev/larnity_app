@@ -5,16 +5,21 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
+import 'package:larnity/src/core/service/payment/cashfree_payment_webview_screen.dart';
+import 'package:larnity/src/core/service/payment/cashfree_service.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
 import 'package:larnity/src/core/service/supabase/src/supabase_storage_service.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
+import 'package:larnity/src/core/utils/show_snackbar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:larnity/src/core/router/router.dart';
+import 'package:larnity/src/features/group/data/datasource/member_datasource.dart';
 import 'package:larnity/src/features/group/data/models/group_model.dart';
+import 'package:larnity/src/features/group/data/models/member_model.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class GroupDetailsScreen extends ConsumerWidget {
   final GroupModel? group;
@@ -471,7 +476,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                   else
                     AppButton(
                       onPressed: () {
-                        _showPlanSelectionSheet(context, selectedGroup);
+                        _showPlanSelectionSheet(context, ref, selectedGroup);
                       },
                       label: "Join Community • $priceLabel",
                       labelStyle: AppTextStyles.bodyText2(color: AppColors.black).copyWith(
@@ -702,7 +707,7 @@ class GroupDetailsScreen extends ConsumerWidget {
   }
 }
 
-void _showPlanSelectionSheet(BuildContext context, GroupModel group) {
+void _showPlanSelectionSheet(BuildContext context, WidgetRef ref, GroupModel group) {
   showModalBottomSheet(
     context: context,
     useRootNavigator: true,
@@ -819,6 +824,7 @@ void _showPlanSelectionSheet(BuildContext context, GroupModel group) {
                       Navigator.of(ctx).pop();
                       _showPaymentSheet(
                         context,
+                        ref: ref,
                         group: group,
                         planName: p['name'] as String,
                         amountINR: p['amount'] as int,
@@ -935,6 +941,7 @@ Widget _buildPlanCard({
 
 void _showPaymentSheet(
   BuildContext context, {
+  required WidgetRef ref,
   required GroupModel group,
   required String planName,
   required int amountINR,
@@ -948,16 +955,27 @@ void _showPaymentSheet(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (ctx) {
-      final preferred = group.landingSettings?['preferredGateway'] as String?;
-      String method = (preferred != null && preferred.isNotEmpty) ? preferred : 'Cashfree';
       final promoController = TextEditingController();
+      Map<String, dynamic>? appliedPromo;
+      bool isVerifyingPromo = false;
+      String? promoError;
+      bool isSubmittingPayment = false;
 
       return StatefulBuilder(
         builder: (ctx, setState) {
+          final int discountAmount;
+          if (appliedPromo != null) {
+            final rate = (appliedPromo!['discountRate'] as num?)?.toInt() ?? 0;
+            discountAmount = ((amountINR * rate) / 100).round();
+          } else {
+            discountAmount = 0;
+          }
+          final int finalPayableINR = (amountINR - discountAmount).clamp(0, amountINR);
+
           return SafeArea(
             child: Container(
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(ctx).size.height * 0.88,
+                maxHeight: MediaQuery.of(ctx).size.height * 0.90,
               ),
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -1040,132 +1058,129 @@ void _showPaymentSheet(
                       ),
                     ),
                     AppSizes.sm.ph,
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: promoController,
-                            decoration: InputDecoration(
-                              hintText: 'Enter promo code',
-                              hintStyle: AppTextStyles.overLine(
-                                color: AppColors.creamWhite.withValues(alpha: 0.5),
+                    if (appliedPromo == null) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: promoController,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: InputDecoration(
+                                hintText: 'Enter promo code',
+                                hintStyle: AppTextStyles.overLine(
+                                  color: AppColors.creamWhite.withValues(alpha: 0.5),
+                                ),
+                                filled: true,
+                                fillColor: AppColors.black,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                                  borderSide: const BorderSide(color: AppColors.borderBrown),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                                  borderSide: const BorderSide(color: AppColors.borderBrown),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                                  borderSide: const BorderSide(color: AppColors.primaryOrange),
+                                ),
                               ),
-                              filled: true,
-                              fillColor: AppColors.black,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                                borderSide: const BorderSide(color: AppColors.borderBrown),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                                borderSide: const BorderSide(color: AppColors.borderBrown),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                                borderSide: const BorderSide(color: AppColors.primaryOrange),
-                              ),
+                              style: AppTextStyles.bodyText2(color: AppColors.white),
                             ),
-                            style: AppTextStyles.bodyText2(color: AppColors.white),
                           ),
-                        ),
-                        AppSizes.xxs.pw,
-                        AppButton(
-                          isExpanded: false,
-                          height: 48,
-                          onPressed: () {
-                            if (promoController.text.trim().isNotEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Invalid promo code')),
-                              );
-                            }
-                          },
-                          label: 'Apply',
-                          labelStyle: AppTextStyles.bodyText2(color: AppColors.white),
-                          bgColor: AppColors.black,
-                          borderColor: AppColors.white,
-                          radius: AppSizes.xxxs,
-                        ),
-                      ],
-                    ),
-                    AppSizes.sm.ph,
-                    Text(
-                      'Payment Method',
-                      style: AppTextStyles.subtitle2(color: AppColors.white).copyWith(
-                        fontWeight: AppFontWeights.bold,
+                          AppSizes.xxs.pw,
+                          AppButton(
+                            isExpanded: false,
+                            height: 48,
+                            isLoading: isVerifyingPromo,
+                            onPressed: () async {
+                              final code = promoController.text.trim();
+                              if (code.isEmpty) return;
+                              setState(() {
+                                isVerifyingPromo = true;
+                                promoError = null;
+                              });
+                              try {
+                                final client = ref.read(supabaseClientProvider);
+                                final res = await client
+                                    .from('PromoCode')
+                                    .select()
+                                    .eq('code', code.toUpperCase())
+                                    .eq('isActive', true)
+                                    .maybeSingle();
+
+                                if (res != null) {
+                                  setState(() {
+                                    appliedPromo = res;
+                                    isVerifyingPromo = false;
+                                    promoError = null;
+                                  });
+                                } else {
+                                  setState(() {
+                                    isVerifyingPromo = false;
+                                    promoError = 'Invalid or expired promo code';
+                                  });
+                                  showErrorToast(content: 'Invalid promo code');
+                                }
+                              } catch (_) {
+                                setState(() {
+                                  isVerifyingPromo = false;
+                                  promoError = 'Error verifying promo code';
+                                });
+                              }
+                            },
+                            label: 'Apply',
+                            labelStyle: AppTextStyles.bodyText2(color: AppColors.white),
+                            bgColor: AppColors.black,
+                            borderColor: AppColors.white,
+                            radius: AppSizes.xxxs,
+                          ),
+                        ],
                       ),
-                    ),
-                    AppSizes.xs.ph,
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => method = 'Paymintro'),
-                            borderRadius: BorderRadius.circular(AppSizes.xxs),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                color: method == 'Paymintro'
-                                    ? AppColors.primaryOrange.withValues(alpha: 0.2)
-                                    : AppColors.black,
-                                borderRadius: BorderRadius.circular(AppSizes.xxs),
-                                border: Border.all(
-                                  color: method == 'Paymintro'
-                                      ? AppColors.primaryOrange
-                                      : AppColors.borderBrown,
-                                  width: method == 'Paymintro' ? 1.5 : 1.0,
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'Paymintro',
-                                  style: AppTextStyles.bodyText2(
-                                    color: method == 'Paymintro'
-                                        ? AppColors.primaryOrange
-                                        : AppColors.white,
-                                  ).copyWith(fontWeight: AppFontWeights.bold),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        AppSizes.xs.pw,
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => method = 'Cashfree'),
-                            borderRadius: BorderRadius.circular(AppSizes.xxs),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                color: method == 'Cashfree'
-                                    ? AppColors.primaryOrange.withValues(alpha: 0.2)
-                                    : AppColors.black,
-                                borderRadius: BorderRadius.circular(AppSizes.xxs),
-                                border: Border.all(
-                                  color: method == 'Cashfree'
-                                      ? AppColors.primaryOrange
-                                      : AppColors.borderBrown,
-                                  width: method == 'Cashfree' ? 1.5 : 1.0,
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  'Cashfree',
-                                  style: AppTextStyles.bodyText2(
-                                    color: method == 'Cashfree'
-                                        ? AppColors.primaryOrange
-                                        : AppColors.white,
-                                  ).copyWith(fontWeight: AppFontWeights.bold),
-                                ),
-                              ),
-                            ),
-                          ),
+                      if (promoError != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          promoError!,
+                          style: const TextStyle(color: AppColors.red, fontSize: 11),
                         ),
                       ],
-                    ),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryOrange.withValues(alpha: 0.15),
+                          border: Border.all(color: AppColors.primaryOrange),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.verified, color: AppColors.primaryOrange, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Code '${appliedPromo!['code']}': ${appliedPromo!['discountRate']}% discount applied",
+                                style: AppTextStyles.bodyText2(color: AppColors.white),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: AppColors.white, size: 18),
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                setState(() {
+                                  appliedPromo = null;
+                                  promoController.clear();
+                                  promoError = null;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     AppSizes.sm.ph,
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1176,12 +1191,22 @@ void _showPaymentSheet(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Total Amount:',
-                            style: AppTextStyles.bodyText1(color: AppColors.creamWhite),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Total Amount:',
+                                style: AppTextStyles.bodyText1(color: AppColors.creamWhite),
+                              ),
+                              if (discountAmount > 0)
+                                Text(
+                                  'Saved ₹$discountAmount with promo',
+                                  style: const TextStyle(color: Colors.green, fontSize: 11),
+                                ),
+                            ],
                           ),
                           Text(
-                            '₹${amountINR.toStringAsFixed(0)}',
+                            '₹$finalPayableINR',
                             style: AppTextStyles.headline4(color: AppColors.primaryOrange).copyWith(
                               fontWeight: AppFontWeights.bold,
                             ),
@@ -1191,80 +1216,105 @@ void _showPaymentSheet(
                     ),
                     AppSizes.sm.ph,
                     AppButton(
-                      onPressed: () async {
-                        String? paymentUrl;
-                        final landingSettings = group.landingSettings;
+                      isLoading: isSubmittingPayment,
+                      onPressed: isSubmittingPayment
+                          ? () {}
+                          : () async {
+                              final user = ref.read(authProvider).user;
+                              if (user == null || user.id == null) {
+                                showErrorToast(content: 'Please sign in to join this community');
+                                context.pushNamed(Routes.auth);
+                                return;
+                              }
 
-                        if (method == 'Cashfree') {
-                          if (landingSettings != null) {
-                            final btn = landingSettings['button'];
-                            if (btn is Map && btn['url'] != null && btn['url'].toString().trim().isNotEmpty) {
-                              paymentUrl = btn['url'].toString().trim();
-                            } else if (landingSettings['paymentUrl'] != null && landingSettings['paymentUrl'].toString().trim().isNotEmpty) {
-                              paymentUrl = landingSettings['paymentUrl'].toString().trim();
-                            }
-                          }
-                        } else {
-                          // Paymintro
-                          if (landingSettings != null && landingSettings['paymintroUrl'] != null && landingSettings['paymintroUrl'].toString().trim().isNotEmpty) {
-                            paymentUrl = landingSettings['paymintroUrl'].toString().trim();
-                          }
-                        }
+                              final groupId = group.id;
+                              if (groupId == null || groupId.isEmpty) {
+                                showErrorToast(content: 'Invalid community selected');
+                                return;
+                              }
 
-                        // If no specific payment form was configured by the creator, fallback to group page on web
-                        if (paymentUrl == null || paymentUrl.isEmpty) {
-                          final slug = group.slug ?? group.id;
-                          paymentUrl = "https://www.larnity.com/group/$slug";
-                        }
+                              if (finalPayableINR <= 0) {
+                                setState(() => isSubmittingPayment = true);
+                                final now = DateTime.now();
+                                final isYearly = planName.toLowerCase().contains('yearly');
+                                final isLifetime = planName.toLowerCase().contains('lifetime');
+                                final endDate = isLifetime
+                                    ? null
+                                    : (isYearly
+                                        ? now.add(const Duration(days: 365))
+                                        : now.add(const Duration(days: 30)));
 
-                        if (!paymentUrl.startsWith('http://') && !paymentUrl.startsWith('https://')) {
-                          paymentUrl = 'https://$paymentUrl';
-                        }
+                                final member = MemberModel(
+                                  groupId: groupId,
+                                  userId: user.id!,
+                                  subscriptionStartDate: now,
+                                  subscriptionEndDate: endDate,
+                                  isActive: true,
+                                  planType: planName,
+                                  planPrice: 0,
+                                  role: 'MEMBER',
+                                );
 
-                        final uri = Uri.tryParse(paymentUrl);
-                        if (uri != null) {
-                          Navigator.of(ctx).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Opening $method payment page...'),
-                              duration: const Duration(seconds: 2),
-                              backgroundColor: AppColors.primaryOrange,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                          try {
-                            final launched = await launchUrl(
-                              uri,
-                              mode: LaunchMode.externalApplication,
-                            );
-                            if (!launched && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Could not open payment link: $paymentUrl'),
-                                  backgroundColor: Colors.redAccent,
-                                ),
+                                await ref.read(memberDataSourceProvider).addOrUpdateMember(member: member);
+                                ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+                                if (ctx.mounted) Navigator.of(ctx).pop();
+                                showSuccessToast(content: '🎉 Welcome to ${group.name}!');
+                                ref.read(groupProvider.notifier).setSelectedGroup(group);
+                                if (context.mounted) context.pushNamed(Routes.group);
+                                return;
+                              }
+
+                              setState(() => isSubmittingPayment = true);
+
+                              final uniqueId = DateTime.now().millisecondsSinceEpoch.toString();
+                              final sanitizedGroupId = groupId.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').padRight(6, '0').substring(0, 6);
+                              final sanitizedUserId = user.id!.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').padRight(6, '0').substring(0, 6);
+                              final linkId = 'lrn_${sanitizedGroupId}_${sanitizedUserId}_$uniqueId';
+
+                              final res = await ref.read(cashfreeServiceProvider).createPaymentLink(
+                                linkId: linkId,
+                                amount: finalPayableINR.toDouble(),
+                                purpose: 'Join ${group.name} - $planName',
+                                customerId: user.id!,
+                                customerName: '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim(),
+                                customerEmail: user.email ?? 'member@larnity.com',
+                                customerPhone: user.phoneNumber ?? '9999999999',
+                                notes: {
+                                  'groupId': groupId,
+                                  'userId': user.id ?? '',
+                                  'planName': planName,
+                                  'amount': finalPayableINR.toString(),
+                                },
                               );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error opening payment page: $e'),
-                                  backgroundColor: Colors.redAccent,
-                                ),
+
+                              setState(() => isSubmittingPayment = false);
+
+                              await res.fold(
+                                (failure) async {
+                                  showErrorToast(content: failure.message);
+                                },
+                                (linkResponse) async {
+                                  if (ctx.mounted) Navigator.of(ctx).pop();
+
+                                  if (context.mounted) {
+                                    Navigator.of(context, rootNavigator: true).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => CashfreePaymentWebViewScreen(
+                                          group: group,
+                                          planName: planName,
+                                          amountINR: finalPayableINR,
+                                          linkResponse: linkResponse,
+                                          appliedPromo: appliedPromo,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
                               );
-                            }
-                          }
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Invalid payment link configured for this group.'),
-                              backgroundColor: Colors.redAccent,
-                            ),
-                          );
-                        }
-                      },
-                      label: 'Pay Securely with $method',
+                            },
+                      label: finalPayableINR <= 0
+                          ? 'Join Free'
+                          : 'Pay ₹$finalPayableINR',
                       labelStyle: AppTextStyles.bodyText2(color: AppColors.black).copyWith(
                         fontWeight: AppFontWeights.bold,
                       ),
