@@ -54,6 +54,8 @@ class ClassRoomScreen extends ConsumerWidget {
     final isLoading = classroomState.fetchState == AsyncState.loading;
     final courses = classroomState.courses ?? [];
 
+    final isOwnerOrAdmin = ref.watch(isGroupAdminOrOwnerProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Class Room"),
@@ -89,26 +91,27 @@ class ClassRoomScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                AppButton(
-                  isExpanded: false,
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => const Dialog(
-                        backgroundColor: AppColors.bgBlue,
-                        child: CreateCourse(),
-                      ),
-                    );
-                  },
-                  prefix: const HugeIcon(
-                    icon: HugeIconsStrokeRounded.addCircle,
-                    color: AppColors.black,
+                if (isOwnerOrAdmin)
+                  AppButton(
+                    isExpanded: false,
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => const Dialog(
+                          backgroundColor: AppColors.bgBlue,
+                          child: CreateCourse(),
+                        ),
+                      );
+                    },
+                    prefix: const HugeIcon(
+                      icon: HugeIconsStrokeRounded.addCircle,
+                      color: AppColors.black,
+                    ),
+                    label: AppStrings.createCourse,
+                    labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
+                    bgColor: AppColors.primaryOrange,
+                    radius: AppSizes.xxxs,
                   ),
-                  label: AppStrings.createCourse,
-                  labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
-                  bgColor: AppColors.primaryOrange,
-                  radius: AppSizes.xxxs,
-                ),
               ],
             ),
             AppSizes.xs.ph,

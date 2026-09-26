@@ -75,6 +75,8 @@ class EventRoomScreen extends ConsumerWidget {
     final eventState = ref.watch(eventProvider(groupId));
     final isLoading = eventState.fetchState == AsyncState.loading;
 
+    final isOwnerOrAdmin = ref.watch(isGroupAdminOrOwnerProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Event Room"),
@@ -106,28 +108,29 @@ class EventRoomScreen extends ConsumerWidget {
                         AppStrings.myEvents,
                         style: AppTextStyles.headline2(color: AppColors.white),
                       ),
-                      AppButton(
-                        isExpanded: false,
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => Dialog(
-                              backgroundColor: AppColors.bgBlue,
-                              child: AddEvent(groupId: groupId),
-                            ),
-                          );
-                        },
-                        prefix: const HugeIcon(
-                          icon: HugeIconsStrokeRounded.addCircle,
-                          color: AppColors.black,
+                      if (isOwnerOrAdmin)
+                        AppButton(
+                          isExpanded: false,
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => Dialog(
+                                backgroundColor: AppColors.bgBlue,
+                                child: AddEvent(groupId: groupId),
+                              ),
+                            );
+                          },
+                          prefix: const HugeIcon(
+                            icon: HugeIconsStrokeRounded.addCircle,
+                            color: AppColors.black,
+                          ),
+                          label: AppStrings.addEvent,
+                          labelStyle: AppTextStyles.bodyText2(
+                            color: AppColors.black,
+                          ),
+                          bgColor: AppColors.primaryOrange,
+                          radius: AppSizes.xxxs,
                         ),
-                        label: AppStrings.addEvent,
-                        labelStyle: AppTextStyles.bodyText2(
-                          color: AppColors.black,
-                        ),
-                        bgColor: AppColors.primaryOrange,
-                        radius: AppSizes.xxxs,
-                      ),
                     ],
                   ),
                   AppSizes.xs.ph,

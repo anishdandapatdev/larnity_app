@@ -73,6 +73,8 @@ class _ServiceRoomScreenState extends ConsumerState<ServiceRoomScreen> {
     final services = state.products ?? [];
     final isLoading = state.fetchState == AsyncState.loading && services.isEmpty;
 
+    final isOwnerOrAdmin = ref.watch(isGroupAdminOrOwnerProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Service Room"),
@@ -110,27 +112,28 @@ class _ServiceRoomScreenState extends ConsumerState<ServiceRoomScreen> {
                     ),
                   ],
                 ),
-                AppButton(
-                  isExpanded: false,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => const Dialog(
-                        backgroundColor: AppColors.bgBlue,
-                        child: AddService(),
-                      ),
-                    );
-                  },
-                  prefix: const HugeIcon(
-                    icon: HugeIconsStrokeRounded.addCircle,
-                    color: AppColors.black,
+                if (isOwnerOrAdmin)
+                  AppButton(
+                    isExpanded: false,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          backgroundColor: AppColors.bgBlue,
+                          child: AddService(groupId: groupId),
+                        ),
+                      );
+                    },
+                    prefix: const HugeIcon(
+                      icon: HugeIconsStrokeRounded.addCircle,
+                      color: AppColors.black,
+                    ),
+                    label: AppStrings.addService,
+                    labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
+                    bgColor: AppColors.primaryOrange,
+                    radius: AppSizes.xxxs,
                   ),
-                  label: AppStrings.addService,
-                  labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
-                  bgColor: AppColors.primaryOrange,
-                  radius: AppSizes.xxxs,
-                ),
               ],
             ),
             AppSizes.xxxlg.ph,

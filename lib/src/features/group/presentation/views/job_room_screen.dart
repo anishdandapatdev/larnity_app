@@ -45,6 +45,7 @@ class _JobRoomScreenState extends ConsumerState<JobRoomScreen> {
 
     final jobState = ref.watch(jobProvider(groupId));
     final jobs = jobState.jobs ?? [];
+    final isOwnerOrAdmin = ref.watch(isGroupAdminOrOwnerProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -82,26 +83,27 @@ class _JobRoomScreenState extends ConsumerState<JobRoomScreen> {
                     ),
                   ],
                 ),
-                AppButton(
-                  isExpanded: false,
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => const Dialog(
-                        backgroundColor: AppColors.bgBlue,
-                        child: AddJob(),
-                      ),
-                    );
-                  },
-                  prefix: const HugeIcon(
-                    icon: HugeIconsStrokeRounded.addCircle,
-                    color: AppColors.black,
+                if (isOwnerOrAdmin)
+                  AppButton(
+                    isExpanded: false,
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => const Dialog(
+                          backgroundColor: AppColors.bgBlue,
+                          child: AddJob(),
+                        ),
+                      );
+                    },
+                    prefix: const HugeIcon(
+                      icon: HugeIconsStrokeRounded.addCircle,
+                      color: AppColors.black,
+                    ),
+                    label: AppStrings.postJob,
+                    labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
+                    bgColor: AppColors.primaryOrange,
+                    radius: AppSizes.xxxs,
                   ),
-                  label: AppStrings.postJob,
-                  labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
-                  bgColor: AppColors.primaryOrange,
-                  radius: AppSizes.xxxs,
-                ),
               ],
             ),
             AppSizes.lg.ph,

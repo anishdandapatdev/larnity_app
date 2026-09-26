@@ -68,6 +68,8 @@ class _ProductRoomScreenState extends ConsumerState<ProductRoomScreen> {
     final products = productState.products ?? [];
     final isLoading = productState.fetchState == AsyncState.loading && products.isEmpty;
 
+    final isOwnerOrAdmin = ref.watch(isGroupAdminOrOwnerProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Product Room"),
@@ -105,27 +107,28 @@ class _ProductRoomScreenState extends ConsumerState<ProductRoomScreen> {
                     ),
                   ],
                 ),
-                AppButton(
-                  isExpanded: false,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => const Dialog(
-                        backgroundColor: AppColors.bgBlue,
-                        child: AddProduct(),
-                      ),
-                    );
-                  },
-                  prefix: const HugeIcon(
-                    icon: HugeIconsStrokeRounded.addCircle,
-                    color: AppColors.black,
+                if (isOwnerOrAdmin)
+                  AppButton(
+                    isExpanded: false,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          backgroundColor: AppColors.bgBlue,
+                          child: AddProduct(groupId: groupId),
+                        ),
+                      );
+                    },
+                    prefix: const HugeIcon(
+                      icon: HugeIconsStrokeRounded.addCircle,
+                      color: AppColors.black,
+                    ),
+                    label: AppStrings.addProduct,
+                    labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
+                    bgColor: AppColors.primaryOrange,
+                    radius: AppSizes.xxxs,
                   ),
-                  label: AppStrings.addProduct,
-                  labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
-                  bgColor: AppColors.primaryOrange,
-                  radius: AppSizes.xxxs,
-                ),
               ],
             ),
             AppSizes.xxxlg.ph,

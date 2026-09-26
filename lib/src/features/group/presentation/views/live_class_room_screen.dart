@@ -74,6 +74,7 @@ class LiveClassRoomScreen extends ConsumerWidget {
 
     final liveClassState = ref.watch(liveClassProvider(groupId));
     final isLoading = liveClassState.fetchState == AsyncState.loading;
+    final isOwnerOrAdmin = ref.watch(isGroupAdminOrOwnerProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -106,28 +107,29 @@ class LiveClassRoomScreen extends ConsumerWidget {
                         AppStrings.liveClass,
                         style: AppTextStyles.headline2(color: AppColors.white),
                       ),
-                      AppButton(
-                        isExpanded: false,
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => Dialog(
-                              backgroundColor: AppColors.bgBlue,
-                              child: AddClass(groupId: groupId),
-                            ),
-                          );
-                        },
-                        prefix: const HugeIcon(
-                          icon: HugeIconsStrokeRounded.addCircle,
-                          color: AppColors.black,
+                      if (isOwnerOrAdmin)
+                        AppButton(
+                          isExpanded: false,
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => Dialog(
+                                backgroundColor: AppColors.bgBlue,
+                                child: AddClass(groupId: groupId),
+                              ),
+                            );
+                          },
+                          prefix: const HugeIcon(
+                            icon: HugeIconsStrokeRounded.addCircle,
+                            color: AppColors.black,
+                          ),
+                          label: AppStrings.addClass,
+                          labelStyle: AppTextStyles.bodyText2(
+                            color: AppColors.black,
+                          ),
+                          bgColor: AppColors.primaryOrange,
+                          radius: AppSizes.xxxs,
                         ),
-                        label: AppStrings.addClass,
-                        labelStyle: AppTextStyles.bodyText2(
-                          color: AppColors.black,
-                        ),
-                        bgColor: AppColors.primaryOrange,
-                        radius: AppSizes.xxxs,
-                      ),
                     ],
                   ),
                   AppSizes.xs.ph,
