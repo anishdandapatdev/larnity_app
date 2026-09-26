@@ -18,7 +18,8 @@ import 'package:larnity/src/features/group/presentation/provider/group_provider.
 import 'package:larnity/src/features/group/presentation/views/service_room_screen.dart';
 
 class AddService extends ConsumerStatefulWidget {
-  const AddService({super.key});
+  final String? groupId;
+  const AddService({super.key, this.groupId});
 
   @override
   ConsumerState<AddService> createState() => _AddServiceState();
@@ -60,60 +61,77 @@ class _AddServiceState extends ConsumerState<AddService> {
   }
 
   Future<void> _submit() async {
-    final groupId = ref.read(groupProvider).group?.id;
-    if (groupId == null) return;
+    final effectiveGroupId = widget.groupId ?? ref.read(groupProvider).group?.id;
+    if (effectiveGroupId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No group selected')));
+      return;
+    }
 
     final name = _nameController.text.trim();
     final desc = _descController.text.trim();
     final priceStr = _priceController.text.trim();
     final whatsapp = _whatsappController.text.trim();
 
-    if (name.isEmpty || desc.isEmpty || priceStr.isEmpty || whatsapp.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all required fields')));
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a service name')));
       return;
     }
-
-    if (_imageFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select an image')));
+    if (desc.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a service description')));
+      return;
+    }
+    if (priceStr.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a service price')));
+      return;
+    }
+    if (whatsapp.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a WhatsApp number')));
       return;
     }
 
     setState(() => _isSaving = true);
 
     try {
-      String imageUrl = '';
-      try {
-        final storageService = ref.read(storageServiceProvider);
-        final storagePath = SupabaseStorageService.generatePath(
-          fileName: _imageFile!.path.split('/').last,
-          subfolder: 'services',
-        );
+      String imageUrl = 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&auto=format&fit=crop&q=80';
+      if (_imageFile != null) {
+        try {
+          final storageService = ref.read(storageServiceProvider);
+          final storagePath = SupabaseStorageService.generatePath(
+            fileName: _imageFile!.path.split('/').last,
+            subfolder: 'services',
+          );
 
-        imageUrl = await storageService.uploadFile(
-          bucket: StorageBucket.productMedia,
-          path: storagePath,
-          file: _imageFile!,
-        );
-      } catch (e) {
-        imageUrl = 'https://via.placeholder.com/300x200.png?text=Service+Image';
+          imageUrl = await storageService.uploadFile(
+            bucket: StorageBucket.productMedia,
+            path: storagePath,
+            file: _imageFile!,
+          );
+        } catch (e) {
+          // Keep default placeholder
+        }
       }
 
       num price = num.tryParse(priceStr) ?? 0;
       num? discountPrice = num.tryParse(_discountPriceController.text.trim());
 
+      String cleanWhatsapp = whatsapp.replaceAll(' ', '').replaceAll('-', '');
+      if (!cleanWhatsapp.startsWith('+')) {
+        cleanWhatsapp = '+91$cleanWhatsapp';
+      }
+
       final service = ProductModel(
-        groupId: groupId,
+        groupId: effectiveGroupId,
         name: name,
         description: desc,
         price: price,
         discountPrice: discountPrice,
-        whatsappNumber: "+91$whatsapp",
+        whatsappNumber: cleanWhatsapp,
         imageUrl: imageUrl,
         type: 'SERVICE',
         rating: _selectedRating,
       );
 
-      ref.read(serviceProductProvider(groupId).notifier).addProduct(
+      ref.read(serviceProductProvider(effectiveGroupId).notifier).addProduct(
         product: service,
         successCallBack: () {
           if (!mounted) return;

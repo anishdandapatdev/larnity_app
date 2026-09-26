@@ -18,7 +18,8 @@ import 'package:larnity/src/features/group/presentation/provider/group_provider.
 import 'package:larnity/src/features/group/presentation/provider/product_provider.dart';
 
 class AddProduct extends ConsumerStatefulWidget {
-  const AddProduct({super.key});
+  final String? groupId;
+  const AddProduct({super.key, this.groupId});
 
   @override
   ConsumerState<AddProduct> createState() => _AddProductState();
@@ -59,60 +60,77 @@ class _AddProductState extends ConsumerState<AddProduct> {
   }
 
   Future<void> _submit() async {
-    final groupId = ref.read(groupProvider).group?.id;
-    if (groupId == null) return;
+    final effectiveGroupId = widget.groupId ?? ref.read(groupProvider).group?.id;
+    if (effectiveGroupId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No group selected')));
+      return;
+    }
 
     final name = _nameController.text.trim();
     final desc = _descController.text.trim();
     final priceStr = _priceController.text.trim();
     final whatsapp = _whatsappController.text.trim();
     
-    if (name.isEmpty || desc.isEmpty || priceStr.isEmpty || whatsapp.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all required fields')));
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a product name')));
       return;
     }
-
-    if (_imageFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select an image')));
+    if (desc.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a product description')));
+      return;
+    }
+    if (priceStr.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a product price')));
+      return;
+    }
+    if (whatsapp.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a WhatsApp number')));
       return;
     }
 
     setState(() => _isSaving = true);
 
     try {
-      String imageUrl = '';
-      try {
-        final storageService = ref.read(storageServiceProvider);
-        final storagePath = SupabaseStorageService.generatePath(
-          fileName: _imageFile!.path.split('/').last,
-          subfolder: 'products',
-        );
+      String imageUrl = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80';
+      if (_imageFile != null) {
+        try {
+          final storageService = ref.read(storageServiceProvider);
+          final storagePath = SupabaseStorageService.generatePath(
+            fileName: _imageFile!.path.split('/').last,
+            subfolder: 'products',
+          );
 
-        imageUrl = await storageService.uploadFile(
-          bucket: StorageBucket.productMedia,
-          path: storagePath,
-          file: _imageFile!,
-        );
-      } catch (e) {
-        imageUrl = 'https://via.placeholder.com/300x200.png?text=Product+Image';
+          imageUrl = await storageService.uploadFile(
+            bucket: StorageBucket.productMedia,
+            path: storagePath,
+            file: _imageFile!,
+          );
+        } catch (e) {
+          // Keep default placeholder if upload fails or bucket is not configured
+        }
       }
 
       num price = num.tryParse(priceStr) ?? 0;
       num? discountPrice = num.tryParse(_discountPriceController.text.trim());
 
+      String cleanWhatsapp = whatsapp.replaceAll(' ', '').replaceAll('-', '');
+      if (!cleanWhatsapp.startsWith('+')) {
+        cleanWhatsapp = '+91$cleanWhatsapp';
+      }
+
       final product = ProductModel(
-        groupId: groupId,
+        groupId: effectiveGroupId,
         name: name,
         description: desc,
         price: price,
         discountPrice: discountPrice,
-        whatsappNumber: "+91$whatsapp",
+        whatsappNumber: cleanWhatsapp,
         imageUrl: imageUrl,
         type: 'PRODUCT',
         rating: 0,
       );
 
-      ref.read(productProvider(groupId).notifier).addProduct(
+      ref.read(productProvider(effectiveGroupId).notifier).addProduct(
         product: product,
         successCallBack: () {
           if (!mounted) return;
