@@ -42,15 +42,26 @@ class GroupNavBar extends ConsumerWidget {
           ? AppBar(
               title: Image.asset(AppAssets.images.logoWhite, width: 100),
               centerTitle: false,
-              leading: Builder(
-                builder: (context) => IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () {
-                    Scaffold.of(context).openEndDrawer();
-                  },
-                ),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: AppColors.white),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.goNamed(Routes.explore);
+                  }
+                },
               ),
-              actions: const [SizedBox.shrink()],
+              actions: [
+                Builder(
+                  builder: (context) => IconButton(
+                    icon: const Icon(Icons.menu, color: AppColors.white),
+                    onPressed: () {
+                      Scaffold.of(context).openEndDrawer();
+                    },
+                  ),
+                ),
+              ],
             )
           : null,
       endDrawer: isGroupHome
@@ -160,62 +171,11 @@ class GroupNavBar extends ConsumerWidget {
                   );
                 }).toList(),
               ),
-              AppSizes.xxxlg.ph,
-              AppButton(
-                onPressed: () {},
-                padding: EdgeInsets.zero,
-                bgColor: Colors.transparent,
-                child: Row(
-                  children: [
-                    Text(
-                      "CHANNELS",
-                      style: AppTextStyles.overLine(color: AppColors.white),
-                    ),
-                    Spacer(),
-                    Icon(Icons.add, color: AppColors.white),
-                  ],
-                ),
-              ),
-              AppSizes.lg.ph,
-
+              AppSizes.md.ph,
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          context.goNamed(Routes.explore);
-                        },
-                        child: Row(
-                          children: [
-                            HugeIcon(
-                              icon: HugeIconsStrokeRounded.home03,
-                              color: Colors.grey,
-                            ),
-                            8.pw,
-                            Text("General", style: AppTextStyles.button()),
-                          ],
-                        ),
-                      ),
-                      AppSizes.xs.ph,
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          context.goNamed(Routes.explore);
-                        },
-                        child: Row(
-                          children: [
-                            HugeIcon(
-                              icon: HugeIconsStrokeRounded.notification01,
-                              color: Colors.grey,
-                            ),
-                            8.pw,
-                            Text("Annoucements", style: AppTextStyles.button()),
-                          ],
-                        ),
-                      ),
-                      AppSizes.xs.ph,
                       Theme(
                         data: Theme.of(
                           context,

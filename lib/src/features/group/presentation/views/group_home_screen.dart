@@ -126,7 +126,7 @@ class _GroupHomeScreenState extends ConsumerState<GroupHomeScreen> {
         'route': Routes.challengeRoom,
       },
       {
-        'key': 'products',
+        'key': 'treasure',
         'title': 'Treasure Room',
         'icon': HugeIconsStrokeRounded.notebook02,
         'route': Routes.treasureRoom,
@@ -138,7 +138,7 @@ class _GroupHomeScreenState extends ConsumerState<GroupHomeScreen> {
         'route': Routes.productRoom,
       },
       {
-        'key': 'jobs',
+        'key': 'services',
         'title': 'Service Room',
         'icon': HugeIconsStrokeRounded.documentValidation,
         'route': Routes.serviceRoom,
