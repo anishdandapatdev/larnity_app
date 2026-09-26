@@ -122,14 +122,58 @@ class _OfferSettingsScreenState extends ConsumerState<OfferSettingsScreen> {
   Widget build(BuildContext context) {
     final groupState = ref.watch(groupProvider);
     final group = groupState.group;
+    final isOwnerOrAdmin = ref.watch(isGroupAdminOrOwnerProvider);
 
     if (group == null) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.darkBg,
-        body: Center(
+        appBar: AppBar(
+          backgroundColor: AppColors.darkBg,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        body: const Center(
           child: Text(
             "No group selected",
             style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    if (!isOwnerOrAdmin) {
+      return Scaffold(
+        backgroundColor: AppColors.darkBg,
+        appBar: AppBar(
+          backgroundColor: AppColors.darkBg,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text("Offer Settings", style: TextStyle(color: Colors.white)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.md),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.lock_outline, size: 64, color: AppColors.primaryOrange),
+                AppSizes.sm.ph,
+                Text(
+                  "Access Restricted",
+                  style: AppTextStyles.headline2(color: AppColors.white),
+                ),
+                AppSizes.xs.ph,
+                Text(
+                  "Only group owners and admins can configure offers.",
+                  style: AppTextStyles.bodyText1(color: AppColors.skyBlue),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -164,6 +208,17 @@ class _OfferSettingsScreenState extends ConsumerState<OfferSettingsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.darkBg,
+      appBar: AppBar(
+        backgroundColor: AppColors.darkBg,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          "Offers",
+          style: AppTextStyles.headline3(color: AppColors.white),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),
         child: SingleChildScrollView(

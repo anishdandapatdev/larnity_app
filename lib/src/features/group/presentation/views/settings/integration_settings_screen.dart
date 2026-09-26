@@ -12,12 +12,65 @@ import 'package:larnity/src/features/group/presentation/widgets/settings/integra
 import 'package:larnity/src/features/group/presentation/widgets/settings/invitation_link.dart';
 import 'package:larnity/src/features/group/presentation/widgets/settings/invite_members.dart';
 
-class IntegrationSettingsScreen extends StatelessWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:larnity/src/core/theme/theme.dart';
+import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
+
+class IntegrationSettingsScreen extends ConsumerWidget {
   const IntegrationSettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isOwnerOrAdmin = ref.watch(isGroupAdminOrOwnerProvider);
+    if (!isOwnerOrAdmin) {
+      return Scaffold(
+        backgroundColor: AppColors.darkBg,
+        appBar: AppBar(
+          backgroundColor: AppColors.darkBg,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text("Integration Settings", style: TextStyle(color: Colors.white)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.md),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.lock_outline, size: 64, color: AppColors.primaryOrange),
+                AppSizes.sm.ph,
+                Text(
+                  "Access Restricted",
+                  style: AppTextStyles.headline2(color: AppColors.white),
+                ),
+                AppSizes.xs.ph,
+                Text(
+                  "Only group owners and admins can configure integrations.",
+                  style: AppTextStyles.bodyText1(color: AppColors.skyBlue),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
+      backgroundColor: AppColors.darkBg,
+      appBar: AppBar(
+        backgroundColor: AppColors.darkBg,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          "Integrations",
+          style: AppTextStyles.headline3(color: AppColors.white),
+        ),
+      ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),

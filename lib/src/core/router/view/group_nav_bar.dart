@@ -11,7 +11,6 @@ import 'package:larnity/src/core/extensions/extensions.dart';
 import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
-import 'package:larnity/src/core/ui/widgets/app_button.dart';
 import 'package:larnity/src/core/ui/widgets/app_dropdown.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 
@@ -34,6 +33,7 @@ class GroupNavBar extends ConsumerWidget {
     // Watch the group provider to get the list of groups
     final groupState = ref.watch(groupProvider);
     final groups = groupState.groups ?? [];
+    final isOwnerOrAdmin = ref.watch(isGroupAdminOrOwnerProvider);
     final isGroupHome = navigationShell.currentIndex == 0;
 
     return Scaffold(
@@ -176,10 +176,11 @@ class GroupNavBar extends ConsumerWidget {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      Theme(
-                        data: Theme.of(
-                          context,
-                        ).copyWith(dividerColor: Colors.transparent),
+                      if (isOwnerOrAdmin)
+                        Theme(
+                          data: Theme.of(
+                            context,
+                          ).copyWith(dividerColor: Colors.transparent),
                         child: ExpansionTile(
                           title: Text(
                             "Settings",
@@ -408,17 +409,18 @@ class GroupNavBar extends ConsumerWidget {
               ),
               isSelected: navigationShell.currentIndex == 2,
             ),
-            _BuildNavItem(
-              onTap: () {
-                context.pushNamed(Routes.generalSettings);
-              },
-              icon: HugeIcon(
-                icon: HugeIconsStrokeRounded.settings01,
-                color: Colors.grey,
-                size: 32,
+            if (isOwnerOrAdmin)
+              _BuildNavItem(
+                onTap: () {
+                  context.pushNamed(Routes.generalSettings);
+                },
+                icon: HugeIcon(
+                  icon: HugeIconsStrokeRounded.settings01,
+                  color: Colors.grey,
+                  size: 32,
+                ),
+                isSelected: false,
               ),
-              isSelected: false,
-            ),
           ],
         ),
       ),
