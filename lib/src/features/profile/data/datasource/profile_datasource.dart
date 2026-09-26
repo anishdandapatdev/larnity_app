@@ -16,25 +16,66 @@ class ProfileDataSource {
   final SupabaseClient supabaseClient;
   ProfileDataSource({required this.supabaseClient});
 
-  /// Upsert so both first-time profile creation and updates work correctly.
+  /// Updates user profile details (first name, last name, phone, image).
+  /// Uses a direct update to avoid triggering RLS INSERT policy violations on `profiles`.
   Future<Either<Failure, UserModel>> createProfile({
     required UserModel user,
   }) async {
     try {
-      Log.info("Upserting profile map: ${user.toMap()}");
-      final response = await supabaseClient
+      final effectiveId = user.id ?? supabaseClient.auth.currentUser?.id;
+      if (effectiveId == null) {
+        return left(Failure("User not authenticated"));
+      }
+
+      final updateData = <String, dynamic>{
+        if (user.firstName != null) 'firstname': user.firstName,
+        if (user.lastName != null) 'lastname': user.lastName,
+        if (user.phoneNumber != null) 'phoneNumber': user.phoneNumber,
+        if (user.image != null) 'image': user.image,
+      };
+
+      Log.info("Updating profile for $effectiveId: $updateData");
+      final updateResponse = await supabaseClient
           .from(SupabaseTable.profiles)
-          .upsert(user.toMap(), onConflict: 'id')
+          .update(updateData)
+          .eq('id', effectiveId)
           .select();
 
-      Log.info("Upsert Profile Response: ${response.first.toString()}");
+      if (updateResponse.isNotEmpty) {
+        Log.info("Profile updated successfully: ${updateResponse.first}");
+        return right(
+          UserModel.fromMap(updateResponse.first).copyWith(
+            id: effectiveId,
+            email: user.email ?? supabaseClient.auth.currentUser?.email,
+          ),
+        );
+      }
 
-      return right(UserModel.fromMap(response.first));
+      // If no row was updated (profile didn't exist yet), insert/upsert it
+      final fullData = <String, dynamic>{
+        'id': effectiveId,
+        'firstname': user.firstName ?? '',
+        'lastname': user.lastName ?? '',
+        if (user.phoneNumber != null) 'phoneNumber': user.phoneNumber,
+        if (user.image != null) 'image': user.image,
+        if (user.email != null) 'email': user.email,
+      };
+      final upsertResponse = await supabaseClient
+          .from(SupabaseTable.profiles)
+          .upsert(fullData, onConflict: 'id')
+          .select();
+
+      return right(
+        UserModel.fromMap(upsertResponse.first).copyWith(
+          id: effectiveId,
+          email: user.email ?? supabaseClient.auth.currentUser?.email,
+        ),
+      );
     } on PostgrestException catch (e) {
-      Log.info("Upsert Profile Error: ${e.message}");
+      Log.error("Update Profile Error: ${e.message}");
       return left(Failure(e.message));
     } catch (e) {
-      Log.info("Upsert Profile Error: ${e.toString()}");
+      Log.error("Update Profile Error: $e");
       return left(Failure(e.toString()));
     }
   }

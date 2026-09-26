@@ -8,6 +8,7 @@ import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
 import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/core/service/cache/user_cache_service.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
@@ -638,7 +639,11 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                 return;
               }
 
+              final effectiveId = user.id ??
+                  ref.read(authProvider).user?.id ??
+                  ref.read(supabaseClientProvider).auth.currentUser?.id;
               final updatedUser = user.copyWith(
+                id: effectiveId,
                 firstName: fName,
                 lastName: lName,
                 phoneNumber: phone,
