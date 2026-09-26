@@ -72,7 +72,6 @@ class CourseModel extends Equatable {
       'thumbnail': image ?? '',
       'privacy': (isPaid ?? false) ? 'PAID' : 'PUBLIC',
       'price': price,
-      'is_published': isPublished ?? true,
     }..removeWhere((key, value) => value == null);
   }
 
@@ -92,7 +91,7 @@ class CourseModel extends Equatable {
       image: map['thumbnail'] as String?,
       isPaid: map['privacy'] == 'PAID',
       price: map['price'] != null ? (map['price'] as num).toInt() : null,
-      isPublished: map['is_published'] as bool? ?? false,
+      isPublished: map['is_published'] as bool? ?? true,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : null,
