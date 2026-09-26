@@ -74,11 +74,20 @@ class MemberDataSource {
     required MemberModel member,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.members)
-          .insert(member.toMap())
-          .select('*, profiles(*)')
-          .single();
+      Map<String, dynamic> response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.members)
+            .insert(member.toMap())
+            .select('*, profiles(*)')
+            .single();
+      } catch (_) {
+        response = await supabaseClient
+            .from(SupabaseTable.members)
+            .insert(member.toMap())
+            .select()
+            .single();
+      }
 
       final created = MemberModel.fromMap(response);
       Log.info('Added member ${created.userId} to group ${created.groupId}');
@@ -107,12 +116,23 @@ class MemberDataSource {
         (existing) async {
           if (existing != null && existing.id != null) {
             final updateData = member.toMap()..remove('id');
-            final response = await supabaseClient
-                .from(SupabaseTable.members)
-                .update(updateData)
-                .eq('id', existing.id!)
-                .select('*, profiles(*)')
-                .single();
+            Map<String, dynamic> response;
+            try {
+              response = await supabaseClient
+                  .from(SupabaseTable.members)
+                  .update(updateData)
+                  .eq('id', existing.id!)
+                  .select('*, profiles(*)')
+                  .single();
+            } catch (_) {
+              response = await supabaseClient
+                  .from(SupabaseTable.members)
+                  .update(updateData)
+                  .eq('id', existing.id!)
+                  .select()
+                  .single();
+            }
+
             final updated = MemberModel.fromMap(response);
             Log.info(
               'Updated existing membership for ${updated.userId} in group ${updated.groupId}',

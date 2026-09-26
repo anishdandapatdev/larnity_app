@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_table.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/features/explore/domain/category.dart';
@@ -9,6 +11,20 @@ import 'package:larnity/src/features/group/data/models/group_model.dart';
 final groupProvider = NotifierProvider<GroupNotifier, GroupState>(
   GroupNotifier.new,
 );
+
+/// Checks whether the currently logged-in user is the owner or an admin of the active group.
+final isGroupAdminOrOwnerProvider = Provider<bool>((ref) {
+  final group = ref.watch(groupProvider).group;
+  final currentUserId = ref.watch(authProvider).user?.id;
+  if (group == null || currentUserId == null || currentUserId.isEmpty) {
+    return false;
+  }
+  // Group creator is always owner/admin
+  if (group.userId != null && group.userId == currentUserId) {
+    return true;
+  }
+  return false;
+});
 
 class GroupNotifier extends Notifier<GroupState> {
   TextEditingController groupNameController = TextEditingController();
@@ -222,6 +238,24 @@ class GroupNotifier extends Notifier<GroupState> {
 
   void setSelectedGroup(GroupModel? group) {
     state = state.copyWith(group: group);
+    if (group != null && group.id != null) {
+      final currentUserId = ref.read(authProvider).user?.id;
+      if (currentUserId != null && currentUserId == group.userId) {
+        Future.microtask(() async {
+          try {
+            final client = ref.read(supabaseClientProvider);
+            await client.from(SupabaseTable.members).upsert({
+              'groupId': group.id,
+              'userId': currentUserId,
+              'role': 'ADMIN',
+              'isActive': true,
+              'planType': 'OWNER',
+              'subscriptionStartDate': DateTime.now().toIso8601String(),
+            }, onConflict: 'groupId,userId');
+          } catch (_) {}
+        });
+      }
+    }
   }
 
   void selectCategory({Category? category}) {

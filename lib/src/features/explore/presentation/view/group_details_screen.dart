@@ -1255,12 +1255,33 @@ void _showPaymentSheet(
                                   role: 'MEMBER',
                                 );
 
-                                await ref.read(memberDataSourceProvider).addOrUpdateMember(member: member);
-                                ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
-                                if (ctx.mounted) Navigator.of(ctx).pop();
-                                showSuccessToast(content: '🎉 Welcome to ${group.name}!');
-                                ref.read(groupProvider.notifier).setSelectedGroup(group);
-                                if (context.mounted) context.pushNamed(Routes.group);
+                                final joinRes = await ref
+                                    .read(memberDataSourceProvider)
+                                    .addOrUpdateMember(member: member);
+
+                                await joinRes.fold(
+                                  (failure) async {
+                                    showErrorToast(
+                                      content:
+                                          'Failed to join group: ${failure.message}',
+                                    );
+                                  },
+                                  (joined) async {
+                                    await ref
+                                        .read(groupProvider.notifier)
+                                        .getGroupsByUser(userId: user.id!);
+                                    ref
+                                        .read(groupProvider.notifier)
+                                        .setSelectedGroup(group);
+                                    if (ctx.mounted) Navigator.of(ctx).pop();
+                                    showSuccessToast(
+                                      content: '🎉 Welcome to ${group.name}!',
+                                    );
+                                    if (context.mounted) {
+                                      context.pushNamed(Routes.group);
+                                    }
+                                  },
+                                );
                                 return;
                               }
 

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:larnity/src/core/error/failures.dart';
 import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_table.dart';
 import 'package:larnity/src/core/utils/logger.dart';
 import 'package:larnity/src/features/group/data/models/group_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -26,8 +27,27 @@ class GroupDataSource {
           .single();
 
       Log.info("Create Group Response: ${response.toString()}");
+      final createdGroup = GroupModel.fromMap(response);
 
-      return Right(GroupModel.fromMap(response));
+      // Auto-enroll the creator as ADMIN in Members table so they have permissions
+      final ownerId = group.userId ?? supabaseClient.auth.currentUser?.id;
+      if (createdGroup.id != null && ownerId != null) {
+        try {
+          await supabaseClient.from(SupabaseTable.members).upsert({
+            'groupId': createdGroup.id,
+            'userId': ownerId,
+            'role': 'ADMIN',
+            'isActive': true,
+            'planType': 'OWNER',
+            'subscriptionStartDate': DateTime.now().toIso8601String(),
+          }, onConflict: 'groupId,userId');
+          Log.info("Auto-enrolled group creator $ownerId as ADMIN in Members");
+        } catch (memberErr) {
+          Log.warning("Could not auto-enroll creator in Members: $memberErr");
+        }
+      }
+
+      return Right(createdGroup);
     } on PostgrestException catch (e) {
       Log.error("Create Group Error: ${e.message}");
       return Left(Failure(e.message));
@@ -59,7 +79,7 @@ class GroupDataSource {
     required String userId,
   }) async {
     try {
-      // Fetch groups created by the user
+      // 1. Fetch groups created/owned by the user
       final ownedResponse = await supabaseClient
           .from('Group')
           .select()
@@ -75,54 +95,42 @@ class GroupDataSource {
         }
       }
 
-      // Fetch groups where user is a member
+      // 2. Fetch groups where user is an active member
       final joinedGroups = <GroupModel>[];
       try {
-        final memberResponse = await supabaseClient
-            .from('Members')
-            .select('groupId, Group(*)')
+        final memberRows = await supabaseClient
+            .from(SupabaseTable.members)
+            .select('groupId')
             .eq('userId', userId);
 
-        for (var row in memberResponse as List) {
-          if (row['Group'] != null) {
+        final groupIds = (memberRows as List)
+            .map((r) => r['groupId']?.toString())
+            .whereType<String>()
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList();
+
+        if (groupIds.isNotEmpty) {
+          final joinedResponse = await supabaseClient
+              .from('Group')
+              .select()
+              .inFilter('id', groupIds);
+
+          for (var data in joinedResponse as List) {
             try {
-              joinedGroups.add(GroupModel.fromMap(row['Group'] as Map<String, dynamic>));
+              joinedGroups.add(
+                GroupModel.fromMap(data as Map<String, dynamic>),
+              );
             } catch (e) {
               Log.error("Error parsing joined group: $e");
             }
           }
         }
       } catch (e) {
-        Log.warning("Could not fetch joined groups via direct relation: $e");
-        // Fallback: fetch groupIds from Members then query Group table directly
-        try {
-          final memberRows = await supabaseClient
-              .from('Members')
-              .select('groupId')
-              .eq('userId', userId);
-          final groupIds = (memberRows as List)
-              .map((r) => r['groupId']?.toString())
-              .where((id) => id != null && id.isNotEmpty)
-              .toList();
-          if (groupIds.isNotEmpty) {
-            final fallbackResponse = await supabaseClient
-                .from('Group')
-                .select()
-                .filter('id', 'in', groupIds);
-            for (var data in fallbackResponse as List) {
-              try {
-                joinedGroups.add(GroupModel.fromMap(data as Map<String, dynamic>));
-              } catch (e2) {
-                Log.error("Error parsing fallback joined group: $e2");
-              }
-            }
-          }
-        } catch (fallbackError) {
-          Log.error("Fallback member query also failed: $fallbackError");
-        }
+        Log.error("Error fetching joined groups for $userId: $e");
       }
 
-      // Combine and deduplicate
+      // 3. Combine and deduplicate
       final allGroupsMap = <String, GroupModel>{};
       for (var g in ownedGroups) {
         if (g.id != null) allGroupsMap[g.id!] = g;
