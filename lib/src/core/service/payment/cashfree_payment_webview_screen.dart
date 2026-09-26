@@ -19,24 +19,31 @@ import 'package:larnity/src/features/group/data/datasource/member_datasource.dar
 import 'package:larnity/src/features/group/data/models/group_model.dart';
 import 'package:larnity/src/features/group/data/models/member_model.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
+import 'package:larnity/src/features/package/data/model/package_model.dart';
+import 'package:larnity/src/features/package_subscription/data/model/package_subscription_model.dart';
+import 'package:larnity/src/features/package_subscription/presentation/providers/package_subscription_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// In-App Cashfree Payment WebView Screen.
 /// Loads the Cashfree checkout page directly inside the app without opening an external browser.
 class CashfreePaymentWebViewScreen extends ConsumerStatefulWidget {
-  final GroupModel group;
+  final GroupModel? group;
+  final PackageModel? package;
   final String planName;
   final int amountINR;
   final CashfreePaymentLinkResponse linkResponse;
   final Map<String, dynamic>? appliedPromo;
+  final Future<void> Function()? onPaymentSuccess;
 
   const CashfreePaymentWebViewScreen({
     super.key,
-    required this.group,
+    this.group,
+    this.package,
     required this.planName,
     required this.amountINR,
     required this.linkResponse,
     this.appliedPromo,
+    this.onPaymentSuccess,
   });
 
   @override
@@ -115,32 +122,6 @@ class _CashfreePaymentWebViewScreenState
     final user = ref.read(authProvider).user;
     if (user == null || user.id == null) return;
 
-    final groupId = widget.group.id;
-    if (groupId == null || groupId.isEmpty) return;
-
-    final now = DateTime.now();
-    final isYearly = widget.planName.toLowerCase().contains('yearly');
-    final isLifetime = widget.planName.toLowerCase().contains('lifetime');
-    final endDate = isLifetime
-        ? null
-        : (isYearly
-            ? now.add(const Duration(days: 365))
-            : now.add(const Duration(days: 30)));
-
-    final member = MemberModel(
-      groupId: groupId,
-      userId: user.id!,
-      subscriptionStartDate: now,
-      subscriptionEndDate: endDate,
-      isActive: true,
-      planType: widget.planName,
-      planPrice: widget.amountINR.toDouble(),
-      role: 'MEMBER',
-    );
-
-    // Enroll member into Supabase
-    await ref.read(memberDataSourceProvider).addOrUpdateMember(member: member);
-
     // Increment promo uses if applied
     if (widget.appliedPromo != null && widget.appliedPromo!['id'] != null) {
       try {
@@ -154,22 +135,84 @@ class _CashfreePaymentWebViewScreenState
       } catch (_) {}
     }
 
-    // Refresh user's groups
-    ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+    if (widget.onPaymentSuccess != null) {
+      await widget.onPaymentSuccess!();
+    } else if (widget.package != null) {
+      final now = DateTime.now();
+      final endDate = widget.package!.isFree
+          ? now.add(Duration(days: widget.package!.freeTrialDays ?? 30))
+          : now.add(const Duration(days: 30));
 
-    if (!mounted) return;
+      await ref
+          .read(packageSubscriptionProvider.notifier)
+          .createPackageSubscription(
+            subscription: PackageSubscriptionModel(
+              userId: user.id!,
+              packageId: widget.package!.id,
+              subscriptionStartDate: now,
+              subscriptionEndDate: endDate,
+              isActive: true,
+              totalGroupsCreated: 0,
+            ),
+          );
 
-    // Small delay to show celebratory green checkmark
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (!mounted) return;
+      if (!mounted) return;
 
-    Navigator.of(context, rootNavigator: true).pop(true); // Close webview screen
-    showSuccessToast(
-      content: "🎉 Welcome to ${widget.group.name}! Membership activated.",
-    );
+      // Small delay to show celebratory green checkmark
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (!mounted) return;
 
-    ref.read(groupProvider.notifier).setSelectedGroup(widget.group);
-    context.pushNamed(Routes.group);
+      Navigator.of(context, rootNavigator: true).pop(true);
+      showSuccessToast(
+        content: "🎉 ${widget.package!.name} activated successfully!",
+      );
+      context.goNamed(Routes.packageSubscription);
+      return;
+    } else if (widget.group != null) {
+      final groupId = widget.group!.id;
+      if (groupId != null && groupId.isNotEmpty) {
+        final now = DateTime.now();
+        final isYearly = widget.planName.toLowerCase().contains('yearly');
+        final isLifetime = widget.planName.toLowerCase().contains('lifetime');
+        final endDate = isLifetime
+            ? null
+            : (isYearly
+                ? now.add(const Duration(days: 365))
+                : now.add(const Duration(days: 30)));
+
+        final member = MemberModel(
+          groupId: groupId,
+          userId: user.id!,
+          subscriptionStartDate: now,
+          subscriptionEndDate: endDate,
+          isActive: true,
+          planType: widget.planName,
+          planPrice: widget.amountINR.toDouble(),
+          role: 'MEMBER',
+        );
+
+        // Enroll member into Supabase
+        await ref.read(memberDataSourceProvider).addOrUpdateMember(member: member);
+
+        // Refresh user's groups
+        ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+
+        if (!mounted) return;
+
+        // Small delay to show celebratory green checkmark
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+
+        Navigator.of(context, rootNavigator: true).pop(true); // Close webview screen
+        showSuccessToast(
+          content: "🎉 Welcome to ${widget.group!.name}! Membership activated.",
+        );
+
+        ref.read(groupProvider.notifier).setSelectedGroup(widget.group!);
+        context.pushNamed(Routes.group);
+        return;
+      }
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -275,7 +318,7 @@ class _CashfreePaymentWebViewScreenState
                 ],
               ),
               Text(
-                "${widget.group.name} • ₹${widget.amountINR}",
+                "${widget.group?.name ?? widget.package?.name ?? widget.planName} • ₹${widget.amountINR}",
                 style: AppTextStyles.overLine(
                   color: AppColors.creamWhite.withValues(alpha: 0.7),
                 ),
@@ -407,7 +450,9 @@ class _CashfreePaymentWebViewScreenState
                       ),
                       AppSizes.xxs.ph,
                       Text(
-                        "Welcome to ${widget.group.name}",
+                        widget.package != null
+                            ? "Upgraded to ${widget.package!.name}"
+                            : "Welcome to ${widget.group?.name ?? widget.planName}",
                         style: AppTextStyles.bodyText2(
                           color: AppColors.creamWhite.withValues(alpha: 0.8),
                         ),
@@ -420,7 +465,9 @@ class _CashfreePaymentWebViewScreenState
                       ),
                       AppSizes.xs.ph,
                       Text(
-                        "Opening community...",
+                        widget.package != null
+                            ? "Activating package subscription..."
+                            : "Opening community...",
                         style: AppTextStyles.overLine(
                           color: AppColors.creamWhite.withValues(alpha: 0.6),
                         ),

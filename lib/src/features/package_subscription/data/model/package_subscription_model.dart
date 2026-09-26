@@ -61,18 +61,22 @@ class PackageSubscriptionModel extends Equatable {
 
   factory PackageSubscriptionModel.fromMap(Map<String, dynamic> map) {
     return PackageSubscriptionModel(
-      id: map["id"] as String,
-      createdAt: DateTime.parse(map['created_at'] as String),
-      userId: map['userId'] as String,
-      packageId: map['packageId'] as String,
-      subscriptionStartDate: DateTime.parse(
-        map['subscriptionStartDate'] as String,
-      ),
-      subscriptionEndDate: DateTime.parse(map['subscriptionEndDate'] as String),
-      isActive: map['isActive'] as bool,
-      totalGroupsCreated: map['totalGroupsCreated'] as int,
+      id: map['id'] as String?,
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'] as String)
+          : null,
+      userId: map['userId'] as String? ?? '',
+      packageId: map['packageId'] as String? ?? '',
+      subscriptionStartDate: map['subscriptionStartDate'] != null
+          ? DateTime.tryParse(map['subscriptionStartDate'] as String)
+          : null,
+      subscriptionEndDate: map['subscriptionEndDate'] != null
+          ? DateTime.tryParse(map['subscriptionEndDate'] as String)
+          : null,
+      isActive: map['isActive'] as bool?,
+      totalGroupsCreated: (map['totalGroupsCreated'] as num?)?.toInt() ?? 0,
       updatedAt: map['updated_at'] != null
-          ? DateTime.parse(map['updated_at'] as String)
+          ? DateTime.tryParse(map['updated_at'] as String)
           : null,
     );
   }

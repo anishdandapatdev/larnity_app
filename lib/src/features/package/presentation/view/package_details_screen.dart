@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
 import 'package:larnity/src/core/router/router.dart';
+import 'package:larnity/src/core/service/payment/cashfree_payment_webview_screen.dart';
+import 'package:larnity/src/core/service/payment/cashfree_service.dart';
 import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
@@ -138,50 +140,108 @@ class _PackageDetailsScreenState extends ConsumerState<PackageDetailsScreen> {
 
     if (_isSubmitting) return;
 
+    // If package is free or promo discount makes it free, activate directly
+    if (widget.package.isFree || _finalPrice == 0) {
+      setState(() => _isSubmitting = true);
+
+      final notifier = ref.read(packageSubscriptionProvider.notifier);
+      final now = DateTime.now();
+      final endDate = widget.package.isFree
+          ? now.add(Duration(days: widget.package.freeTrialDays ?? 30))
+          : now.add(const Duration(days: 30));
+
+      await notifier.createPackageSubscription(
+        subscription: PackageSubscriptionModel(
+          userId: userId,
+          packageId: widget.package.id,
+          subscriptionStartDate: now,
+          subscriptionEndDate: endDate,
+          isActive: true,
+          totalGroupsCreated: 0,
+        ),
+        successCallBack: () async {
+          if (_appliedPromo != null && _appliedPromo!['id'] != null) {
+            try {
+              final client = ref.read(supabaseClientProvider);
+              final currentUses =
+                  (_appliedPromo!['currentUses'] as num?)?.toInt() ?? 0;
+              await client
+                  .from('PromoCode')
+                  .update({'currentUses': currentUses + 1})
+                  .eq('id', _appliedPromo!['id']);
+            } catch (_) {}
+          }
+
+          if (mounted) {
+            setState(() => _isSubmitting = false);
+            showSuccessToast(
+              content: "${widget.package.name} activated successfully!",
+            );
+            context.goNamed(Routes.packageSubscription);
+          }
+        },
+        failureCallBack: (error) {
+          if (mounted) {
+            setState(() => _isSubmitting = false);
+            showErrorToast(content: error);
+          }
+        },
+      );
+      return;
+    }
+
+    // Real Paid Upgrade Flow via Cashfree Payment Gateway!
     setState(() => _isSubmitting = true);
 
-    final notifier = ref.read(packageSubscriptionProvider.notifier);
+    final uniqueId = DateTime.now().millisecondsSinceEpoch.toString();
+    final sanitizedPkgId = widget.package.id
+        .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+        .padRight(6, '0')
+        .substring(0, 6);
+    final sanitizedUserId = userId
+        .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+        .padRight(6, '0')
+        .substring(0, 6);
+    final linkId = 'pkg_${sanitizedPkgId}_${sanitizedUserId}_$uniqueId';
 
-    final now = DateTime.now();
-    final endDate = widget.package.isFree
-        ? now.add(Duration(days: widget.package.freeTrialDays ?? 30))
-        : now.add(const Duration(days: 30));
-
-    await notifier.createPackageSubscription(
-      subscription: PackageSubscriptionModel(
-        userId: userId,
-        packageId: widget.package.id,
-        subscriptionStartDate: now,
-        subscriptionEndDate: endDate,
-        isActive: true,
-        totalGroupsCreated: 0,
-      ),
-      successCallBack: () async {
-        if (_appliedPromo != null && _appliedPromo!['id'] != null) {
-          try {
-            final client = ref.read(supabaseClientProvider);
-            final currentUses =
-                (_appliedPromo!['currentUses'] as num?)?.toInt() ?? 0;
-            await client
-                .from('PromoCode')
-                .update({'currentUses': currentUses + 1})
-                .eq('id', _appliedPromo!['id']);
-          } catch (_) {}
-        }
-
-        if (mounted) {
-          setState(() => _isSubmitting = false);
-          showSuccessToast(
-            content: "${widget.package.name} activated successfully!",
-          );
-          context.goNamed(Routes.packageSubscription);
-        }
+    final res = await ref.read(cashfreeServiceProvider).createPaymentLink(
+      linkId: linkId,
+      amount: _finalPrice.toDouble(),
+      purpose: 'Upgrade Package - ${widget.package.name}',
+      customerId: userId,
+      customerName: '${user?.firstName ?? ''} ${user?.lastName ?? ''}'.trim(),
+      customerEmail: user?.email ?? 'subscriber@larnity.com',
+      customerPhone: user?.phoneNumber ?? '9999999999',
+      notes: {
+        'type': 'package_upgrade',
+        'packageId': widget.package.id,
+        'userId': userId,
+        'packageName': widget.package.name,
+        'amount': _finalPrice.toString(),
       },
-      failureCallBack: (error) {
-        if (mounted) {
-          setState(() => _isSubmitting = false);
-          showErrorToast(content: error);
-        }
+    );
+
+    if (mounted) {
+      setState(() => _isSubmitting = false);
+    }
+
+    await res.fold(
+      (failure) async {
+        showErrorToast(content: failure.message);
+      },
+      (linkResponse) async {
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute(
+            builder: (_) => CashfreePaymentWebViewScreen(
+              package: widget.package,
+              planName: widget.package.name,
+              amountINR: _finalPrice,
+              linkResponse: linkResponse,
+              appliedPromo: _appliedPromo,
+            ),
+          ),
+        );
       },
     );
   }
@@ -539,7 +599,7 @@ class _PackageDetailsScreenState extends ConsumerState<PackageDetailsScreen> {
                             onPressed: _handleSubscription,
                             label: widget.package.isFree || _finalPrice == 0
                                 ? "Activate Free Subscription"
-                                : "Pay ₹$_finalPrice with $_selectedPaymentMethod",
+                                : "Pay ₹$_finalPrice with Cashfree",
                             labelStyle: AppTextStyles.button(
                               color: AppColors.darkBrown,
                             ),

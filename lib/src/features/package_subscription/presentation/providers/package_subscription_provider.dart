@@ -108,15 +108,16 @@ class PackageSubscriptionNotifier extends Notifier<PackageSubscriptionState> {
       ),
       (subscriptions) {
         // Find the active subscription or use the most recent one
-        final activeSubscription = subscriptions.firstWhere(
-          (sub) => sub.isValid != null && sub.isValid!,
-          orElse: () => subscriptions.first,
-        );
+        final activeSubscription = subscriptions.isEmpty
+            ? null
+            : subscriptions.where((sub) => sub.isValid == true).firstOrNull ??
+                subscriptions.first;
 
         state = state.copyWith(
           state: AsyncState.success,
           subscriptions: subscriptions,
           activeSubscription: activeSubscription,
+          clearActiveSubscription: activeSubscription == null,
         );
       },
     );
@@ -193,9 +194,8 @@ class PackageSubscriptionNotifier extends Notifier<PackageSubscriptionState> {
 
         state = state.copyWith(
           state: AsyncState.success,
-          activeSubscription: shouldClearActive
-              ? null
-              : state.activeSubscription,
+          clearActiveSubscription: shouldClearActive,
+          activeSubscription: shouldClearActive ? null : state.activeSubscription,
           subscriptions: updatedSubscriptions,
         );
       },
@@ -216,19 +216,14 @@ class PackageSubscriptionNotifier extends Notifier<PackageSubscriptionState> {
         error: failure.message,
       ),
       (subscription) {
-        if (subscription == null ||
-            subscription.isValid == null ||
-            !subscription.isValid!) {
-          state = state.copyWith(
-            state: AsyncState.success,
-            activeSubscription: null,
-          );
-        } else {
-          state = state.copyWith(
-            state: AsyncState.success,
-            activeSubscription: subscription,
-          );
-        }
+        final isValid = subscription != null &&
+            subscription.isValid != null &&
+            subscription.isValid!;
+        state = state.copyWith(
+          state: AsyncState.success,
+          activeSubscription: isValid ? subscription : null,
+          clearActiveSubscription: !isValid,
+        );
       },
     );
   }
@@ -259,12 +254,16 @@ class PackageSubscriptionState {
     AsyncState? state,
     String? error,
     PackageSubscriptionModel? activeSubscription,
+    bool clearActiveSubscription = false,
     List<PackageSubscriptionModel>? subscriptions,
   }) {
     return PackageSubscriptionState(
       state: state ?? this.state,
       error: error ?? this.error,
-      activeSubscription: activeSubscription ?? this.activeSubscription,
+      // clearActiveSubscription=true explicitly nullifies even if activeSubscription param is null
+      activeSubscription: clearActiveSubscription
+          ? null
+          : (activeSubscription ?? this.activeSubscription),
       subscriptions: subscriptions ?? this.subscriptions,
     );
   }

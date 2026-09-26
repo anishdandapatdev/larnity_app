@@ -22,17 +22,108 @@ class PackageSubscriptionDataSource {
     required PackageSubscriptionModel subscription,
   }) async {
     try {
-      final response = await supabaseClient
-          .from('PackageSubscriptions')
-          .insert(subscription.toMap())
-          .select()
-          .single();
+      // 1. Deactivate any currently active subscriptions for this user to ensure only the newly selected one is active
+      try {
+        await supabaseClient
+            .from('PackageSubscriptions')
+            .update({
+              'isActive': false,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('userId', subscription.userId)
+            .eq('isActive', true);
+      } catch (deactivateErr) {
+        Log.warning("Could not deactivate previous subscriptions: $deactivateErr");
+      }
 
-      Log.info("Create Package Subscription Response: ${response.toString()}");
+      // 2. Check if a subscription record already exists for this user and package
+      final existingForPackage = await supabaseClient
+          .from('PackageSubscriptions')
+          .select()
+          .eq('userId', subscription.userId)
+          .eq('packageId', subscription.packageId)
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      Map<String, dynamic>? existingRecord;
+      if (existingForPackage.isNotEmpty) {
+        existingRecord = existingForPackage.first;
+      } else {
+        // If not found for this package, check if user has any subscription record
+        // (handles unique constraint on userId alone when upgrading/switching packages)
+        final existingForUser = await supabaseClient
+            .from('PackageSubscriptions')
+            .select()
+            .eq('userId', subscription.userId)
+            .order('created_at', ascending: false)
+            .limit(1);
+        if (existingForUser.isNotEmpty) {
+          existingRecord = existingForUser.first;
+        }
+      }
+
+      final Map<String, dynamic> response;
+      if (existingRecord != null && existingRecord['id'] != null) {
+        final updateData = subscription.toMap()..remove('id');
+        updateData['updated_at'] = DateTime.now().toIso8601String();
+        updateData['isActive'] = true;
+        // Preserve previous group count if present
+        if (existingRecord['totalGroupsCreated'] != null) {
+          updateData['totalGroupsCreated'] = existingRecord['totalGroupsCreated'];
+        }
+
+        response = await supabaseClient
+            .from('PackageSubscriptions')
+            .update(updateData)
+            .eq('id', existingRecord['id'])
+            .select()
+            .single();
+
+        Log.info(
+          "Updated existing Package Subscription for User: ${subscription.userId}, Package: ${subscription.packageId}",
+        );
+      } else {
+        response = await supabaseClient
+            .from('PackageSubscriptions')
+            .insert(subscription.toMap())
+            .select()
+            .single();
+
+        Log.info("Create Package Subscription Response: ${response.toString()}");
+      }
 
       return Right(PackageSubscriptionModel.fromMap(response));
     } on PostgrestException catch (e) {
       Log.error("Create Package Subscription Error: ${e.message}");
+      // Fallback in case a concurrent insert or race condition triggered duplicate key
+      if (e.message.contains('unique') || e.message.contains('duplicate')) {
+        try {
+          final fallbackRecords = await supabaseClient
+              .from('PackageSubscriptions')
+              .select()
+              .eq('userId', subscription.userId)
+              .order('created_at', ascending: false)
+              .limit(1);
+
+          if (fallbackRecords.isNotEmpty && fallbackRecords.first['id'] != null) {
+            final updateData = subscription.toMap()..remove('id');
+            updateData['updated_at'] = DateTime.now().toIso8601String();
+            updateData['isActive'] = true;
+
+            final fallbackResponse = await supabaseClient
+                .from('PackageSubscriptions')
+                .update(updateData)
+                .eq('id', fallbackRecords.first['id'])
+                .select()
+                .single();
+
+            Log.info("Fallback updated Package Subscription: $fallbackResponse");
+            return Right(PackageSubscriptionModel.fromMap(fallbackResponse));
+          }
+        } catch (fallbackError) {
+          Log.error("Fallback update failed: $fallbackError");
+        }
+      }
       return Left(Failure(e.message));
     } catch (e) {
       Log.error("Create Package Subscription Error: ${e.toString()}");
