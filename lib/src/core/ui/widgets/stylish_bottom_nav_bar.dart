@@ -42,31 +42,42 @@ class StylishBottomNavBar extends StatelessWidget {
                 ],
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _NavBarItem(
-                    icon: HugeIconsStrokeRounded.home03,
-                    label: "Home",
-                    isSelected: currentIndex == 0,
-                    onTap: () => onTap(0),
+                  Expanded(
+                    flex: currentIndex == 0 ? 3 : 2,
+                    child: _NavBarItem(
+                      icon: HugeIconsStrokeRounded.home03,
+                      label: "Home",
+                      isSelected: currentIndex == 0,
+                      onTap: () => onTap(0),
+                    ),
                   ),
-                  _NavBarItem(
-                    icon: HugeIconsStrokeRounded.book02,
-                    label: "Courses",
-                    isSelected: currentIndex == 1,
-                    onTap: () => onTap(1),
+                  Expanded(
+                    flex: currentIndex == 1 ? 3 : 2,
+                    child: _NavBarItem(
+                      icon: HugeIconsStrokeRounded.book02,
+                      label: "Courses",
+                      isSelected: currentIndex == 1,
+                      onTap: () => onTap(1),
+                    ),
                   ),
-                  _NavBarItem(
-                    icon: HugeIconsStrokeRounded.addCircle,
-                    label: "Create",
-                    isSelected: currentIndex == 2,
-                    onTap: () => onTap(2),
+                  Expanded(
+                    flex: currentIndex == 2 ? 3 : 2,
+                    child: _NavBarItem(
+                      icon: HugeIconsStrokeRounded.addCircle,
+                      label: "Create",
+                      isSelected: currentIndex == 2,
+                      onTap: () => onTap(2),
+                    ),
                   ),
-                  _NavBarItem(
-                    icon: HugeIconsStrokeRounded.userCircle,
-                    label: "Profile",
-                    isSelected: currentIndex == 3,
-                    onTap: () => onTap(3),
+                  Expanded(
+                    flex: currentIndex == 3 ? 3 : 2,
+                    child: _NavBarItem(
+                      icon: HugeIconsStrokeRounded.userCircle,
+                      label: "Profile",
+                      isSelected: currentIndex == 3,
+                      onTap: () => onTap(3),
+                    ),
                   ),
                 ],
               ),
@@ -96,49 +107,57 @@ class _NavBarItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOutCubic,
-        padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 12 : 8,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primaryOrange.withValues(alpha: 0.18)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.primaryOrange.withValues(alpha: 0.35)
-                : Colors.transparent,
-            width: 1,
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOutCubic,
+          padding: EdgeInsets.symmetric(
+            horizontal: isSelected ? 10 : 6,
+            vertical: 8,
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            HugeIcon(
-              icon: icon,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primaryOrange.withValues(alpha: 0.18)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
               color: isSelected
-                  ? AppColors.primaryOrange
-                  : AppColors.white.withValues(alpha: 0.55),
-              size: 20,
+                  ? AppColors.primaryOrange.withValues(alpha: 0.35)
+                  : Colors.transparent,
+              width: 1,
             ),
-            if (isSelected) ...[
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: AppTextStyles.caption1(
-                  color: AppColors.primaryOrange,
-                ).copyWith(
-                  fontWeight: AppFontWeights.bold,
-                  letterSpacing: 0.3,
-                  fontSize: 12,
-                ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              HugeIcon(
+                icon: icon,
+                color: isSelected
+                    ? AppColors.primaryOrange
+                    : AppColors.white.withValues(alpha: 0.55),
+                size: 20,
               ),
+              if (isSelected) ...[
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                    style: AppTextStyles.caption1(
+                      color: AppColors.primaryOrange,
+                    ).copyWith(
+                      fontWeight: AppFontWeights.bold,
+                      letterSpacing: 0.2,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
