@@ -9,9 +9,13 @@ static const String googleClientId=_AppEnv.googleClientId;
 @EnviedField(varName: 'GOOGLE_SERVER_ID')
 static const String googleServerId=_AppEnv.googleServerId;
 
-@EnviedField(varName: 'SUPABASE_BASE_URL')
-static const String supabaseBaseUrl=_AppEnv.supabaseBaseUrl;
-@EnviedField(varName: 'SUPABASE_PUBLISHABLE_KEY')
-static const String supabasePublishableKey=_AppEnv.supabasePublishableKey;
+  @EnviedField(varName: 'SUPABASE_BASE_URL')
+  static const String supabaseBaseUrl = _AppEnv.supabaseBaseUrl;
+  @EnviedField(varName: 'SUPABASE_PUBLISHABLE_KEY')
+  static const String supabasePublishableKey = _AppEnv.supabasePublishableKey;
 
-  }
+  @EnviedField(varName: 'CASHFREE_CLIENT_ID', defaultValue: '')
+  static const String cashfreeClientId = _AppEnv.cashfreeClientId;
+  @EnviedField(varName: 'CASHFREE_CLIENT_SECRET', defaultValue: '')
+  static const String cashfreeClientSecret = _AppEnv.cashfreeClientSecret;
+}
