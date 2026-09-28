@@ -21,6 +21,7 @@ class Routes {
   static const String managerSettings = 'manager-settings';
   static const String profileSettings = 'profile-settings';
   static const String purchaseCourse = 'purchase-course';
+  static const String purchases = 'purchases';
   static const String createGroup = 'create-group';
   static const String chatting = 'chatting';
   static const String choosePlan = 'choose-plan';
@@ -148,6 +149,7 @@ StatefulShellRoute _buildExploreShellRoutes() {
     branches: [
       StatefulShellBranch(routes: [_buildExploreScreenRoute()]),
       StatefulShellBranch(routes: [_buildPurchaseCourseScreenRoute()]),
+      StatefulShellBranch(routes: [_buildPurchasesScreenRoute()]),
       StatefulShellBranch(routes: [_buildCreateGroupScreenRoute()]),
       StatefulShellBranch(routes: [_buildProfileSettingsScreenRoute()]),
       StatefulShellBranch(routes: [_buildPackageSubscriptionScreenRoute()]),
@@ -172,7 +174,19 @@ GoRoute _buildPurchaseCourseScreenRoute() => GoRoute(
   name: Routes.purchaseCourse,
   path: Routes.purchaseCourse.p,
   pageBuilder: _getDefaultPageBuilderByPlatform(
-    childBuilder: (_, state) => const PurchaseCourseScreen(),
+    childBuilder: (_, state) => const PurchaseCourseScreen(
+      initialTab: PurchaseTab.courses,
+    ),
+  ),
+);
+
+GoRoute _buildPurchasesScreenRoute() => GoRoute(
+  name: Routes.purchases,
+  path: Routes.purchases.p,
+  pageBuilder: _getDefaultPageBuilderByPlatform(
+    childBuilder: (_, state) => const PurchaseCourseScreen(
+      initialTab: PurchaseTab.groups,
+    ),
   ),
 );
 

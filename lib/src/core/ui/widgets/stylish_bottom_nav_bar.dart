@@ -55,8 +55,8 @@ class StylishBottomNavBar extends StatelessWidget {
                   Expanded(
                     flex: currentIndex == 1 ? 3 : 2,
                     child: _NavBarItem(
-                      icon: HugeIconsStrokeRounded.shoppingBag01,
-                      label: "Purchases",
+                      icon: HugeIconsStrokeRounded.book02,
+                      label: "Courses",
                       isSelected: currentIndex == 1,
                       onTap: () => onTap(1),
                     ),
@@ -64,8 +64,8 @@ class StylishBottomNavBar extends StatelessWidget {
                   Expanded(
                     flex: currentIndex == 2 ? 3 : 2,
                     child: _NavBarItem(
-                      icon: HugeIconsStrokeRounded.addCircle,
-                      label: "Create",
+                      icon: HugeIconsStrokeRounded.shoppingBag01,
+                      label: "Purchases",
                       isSelected: currentIndex == 2,
                       onTap: () => onTap(2),
                     ),
@@ -73,10 +73,19 @@ class StylishBottomNavBar extends StatelessWidget {
                   Expanded(
                     flex: currentIndex == 3 ? 3 : 2,
                     child: _NavBarItem(
-                      icon: HugeIconsStrokeRounded.userCircle,
-                      label: "Profile",
+                      icon: HugeIconsStrokeRounded.addCircle,
+                      label: "Create",
                       isSelected: currentIndex == 3,
                       onTap: () => onTap(3),
+                    ),
+                  ),
+                  Expanded(
+                    flex: currentIndex == 4 ? 3 : 2,
+                    child: _NavBarItem(
+                      icon: HugeIconsStrokeRounded.userCircle,
+                      label: "Profile",
+                      isSelected: currentIndex == 4,
+                      onTap: () => onTap(4),
                     ),
                   ),
                 ],

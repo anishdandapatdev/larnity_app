@@ -101,7 +101,12 @@ final purchasedCoursesProvider =
 enum PurchaseTab { courses, groups }
 
 class PurchaseCourseScreen extends ConsumerStatefulWidget {
-  const PurchaseCourseScreen({super.key});
+  final PurchaseTab initialTab;
+
+  const PurchaseCourseScreen({
+    super.key,
+    this.initialTab = PurchaseTab.courses,
+  });
 
   @override
   ConsumerState<PurchaseCourseScreen> createState() =>
@@ -110,16 +115,27 @@ class PurchaseCourseScreen extends ConsumerStatefulWidget {
 
 class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
   final TextEditingController _searchController = TextEditingController();
-  PurchaseTab _activeTab = PurchaseTab.courses;
+  late PurchaseTab _activeTab;
   String _selectedFilter = 'All'; // 'All', 'Paid', 'Free'
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
+    _activeTab = widget.initialTab;
     Future.microtask(() {
       ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
     });
+  }
+
+  @override
+  void didUpdateWidget(PurchaseCourseScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTab != widget.initialTab) {
+      setState(() {
+        _activeTab = widget.initialTab;
+      });
+    }
   }
 
   @override

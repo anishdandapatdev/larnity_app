@@ -28,7 +28,7 @@ class ExploreNestedRoute extends ConsumerWidget {
       AppDropdownController();
 
   void _goBranch(BuildContext context, WidgetRef ref, int index) {
-    if (index == 2) {
+    if (index == 3) {
       // User tapped Create! Run the exact flow from "Create your own group"
       final packageState = ref.read(packageProvider);
       final packageSubscriptionState = ref.read(packageSubscriptionProvider);
@@ -160,32 +160,10 @@ class ExploreNestedRoute extends ConsumerWidget {
                 icon: HugeIconsStrokeRounded.book02,
                 color: AppColors.white,
               ),
-              title: const Text('Purchase Courses'),
+              title: const Text('My Learning Courses'),
               onTap: () {
                 Navigator.pop(context);
                 _goBranch(context, ref, 1);
-              },
-            ),
-            ListTile(
-              leading: HugeIcon(
-                icon: HugeIconsStrokeRounded.addCircle,
-                color: AppColors.white,
-              ),
-              title: const Text('Create Community'),
-              onTap: () {
-                Navigator.pop(context);
-                _goBranch(context, ref, 2);
-              },
-            ),
-            ListTile(
-              leading: HugeIcon(
-                icon: HugeIconsStrokeRounded.userCircle,
-                color: AppColors.white,
-              ),
-              title: const Text('Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                _goBranch(context, ref, 3);
               },
             ),
             ListTile(
@@ -196,7 +174,29 @@ class ExploreNestedRoute extends ConsumerWidget {
               title: const Text('My Purchases'),
               onTap: () {
                 Navigator.pop(context);
-                _goBranch(context, ref, 1);
+                _goBranch(context, ref, 2);
+              },
+            ),
+            ListTile(
+              leading: HugeIcon(
+                icon: HugeIconsStrokeRounded.addCircle,
+                color: AppColors.white,
+              ),
+              title: const Text('Create Community'),
+              onTap: () {
+                Navigator.pop(context);
+                _goBranch(context, ref, 3);
+              },
+            ),
+            ListTile(
+              leading: HugeIcon(
+                icon: HugeIconsStrokeRounded.userCircle,
+                color: AppColors.white,
+              ),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                _goBranch(context, ref, 4);
               },
             ),
             ListTile(
@@ -225,11 +225,11 @@ class ExploreNestedRoute extends ConsumerWidget {
         ),
       )
     : null,
-      extendBody: navigationShell.currentIndex <= 3,
+      extendBody: navigationShell.currentIndex <= 4,
       body: navigationShell,
-      bottomNavigationBar: navigationShell.currentIndex <= 3
+      bottomNavigationBar: navigationShell.currentIndex <= 4
           ? StylishBottomNavBar(
-              currentIndex: navigationShell.currentIndex.clamp(0, 3),
+              currentIndex: navigationShell.currentIndex.clamp(0, 4),
               onTap: (index) => _goBranch(context, ref, index),
             )
           : null,
