@@ -1,12 +1,20 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:hugeicons/styles/stroke_rounded.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/constants/app_strings.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
+import 'package:larnity/src/core/extensions/screen_size_extension.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_storage_service.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
 import 'package:larnity/src/core/ui/widgets/dialog_header.dart';
+import 'package:larnity/src/core/utils/logger.dart';
 import 'package:larnity/src/features/group/data/models/course_model.dart';
 import 'package:larnity/src/features/group/presentation/provider/classroom_provider.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
@@ -23,6 +31,7 @@ class _CreateCourseState extends ConsumerState<CreateCourse> {
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
 
+  File? _imageFile;
   bool _isPaid = false; // Default public
   bool _isSaving = false;
 
@@ -32,6 +41,26 @@ class _CreateCourseState extends ConsumerState<CreateCourse> {
     _descriptionController.dispose();
     _priceController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _imageFile = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to pick image: $e")),
+      );
+    }
   }
 
   Future<void> _saveCourse() async {
@@ -86,12 +115,31 @@ class _CreateCourseState extends ConsumerState<CreateCourse> {
     setState(() => _isSaving = true);
 
     try {
+      String? thumbnailUrl;
+      if (_imageFile != null) {
+        try {
+          final storageService = ref.read(storageServiceProvider);
+          final fileExt = _imageFile!.path.split('.').last.toLowerCase();
+          final storagePath = SupabaseStorageService.generatePath(
+            fileName: 'thumbnail_${DateTime.now().millisecondsSinceEpoch}.$fileExt',
+            subfolder: 'courses',
+          );
+          thumbnailUrl = await storageService.uploadFile(
+            bucket: StorageBucket.courseMedia,
+            path: storagePath,
+            file: _imageFile!,
+          );
+        } catch (e) {
+          Log.error("Failed to upload course thumbnail: $e");
+        }
+      }
+
       // 1. Construct CourseModel
       final course = CourseModel(
         groupId: groupId,
         title: title,
         description: description,
-        image: null,
+        image: thumbnailUrl,
         isPaid: _isPaid,
         price: _isPaid ? price : 0,
         isPublished: true,
@@ -139,6 +187,67 @@ class _CreateCourseState extends ConsumerState<CreateCourse> {
               title: AppStrings.createNewCourse,
               description: AppStrings.createNewCourseDesc,
             ),
+            Text(AppStrings.courseThumbnail, style: AppTextStyles.overLine()),
+            AppSizes.xxxs.ph,
+            GestureDetector(
+              onTap: _isSaving ? null : _pickImage,
+              child: Container(
+                height: 0.16.sh,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.darkBgContainer,
+                  border: Border.all(
+                    color: AppColors.skyBlue.withValues(alpha: 0.5),
+                  ),
+                  borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                  image: _imageFile != null
+                      ? DecorationImage(
+                          image: FileImage(_imageFile!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: _imageFile == null
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const HugeIcon(
+                            icon: HugeIconsStrokeRounded.image02,
+                            color: AppColors.creamWhite,
+                            size: 32,
+                          ),
+                          AppSizes.xxs.ph,
+                          Text(
+                            "Upload Thumbnail",
+                            style: AppTextStyles.bodyText2(
+                              color: AppColors.creamWhite,
+                            ),
+                          ),
+                          AppSizes.xxxs.ph,
+                          Text(
+                            AppStrings.max400x400,
+                            style: AppTextStyles.caption(
+                              color: AppColors.skyBlue,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.change_circle,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            AppSizes.xs.ph,
             Text(AppStrings.courseName, style: AppTextStyles.overLine()),
             AppSizes.xxxs.ph,
             TextFormField(
