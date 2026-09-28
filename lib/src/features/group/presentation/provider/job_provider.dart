@@ -58,7 +58,14 @@ class JobNotifier extends AutoDisposeFamilyNotifier<JobState, String> {
     final result = await ds.createJob(job: job);
     result.fold(
       (f) { state = state.copyWith(createState: AsyncState.failure, error: f.message); failureCallBack?.call(f.message); },
-      (created) { state = state.copyWith(createState: AsyncState.success, jobs: [created, ...(state.jobs ?? [])]); successCallBack?.call(); },
+      (created) {
+        state = state.copyWith(
+          createState: AsyncState.success,
+          jobs: [created, ...(state.jobs ?? [])],
+        );
+        fetchJobs();
+        successCallBack?.call();
+      },
     );
   }
 

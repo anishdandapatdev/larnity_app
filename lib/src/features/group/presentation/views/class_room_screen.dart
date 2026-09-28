@@ -161,6 +161,7 @@ class ClassRoomScreen extends ConsumerWidget {
                           extra: {
                             'courseId': course.id!,
                             'courseName': course.title ?? 'Course',
+                            'groupId': groupId,
                           },
                         );
                       },

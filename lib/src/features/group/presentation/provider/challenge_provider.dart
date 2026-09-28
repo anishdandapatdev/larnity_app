@@ -126,5 +126,22 @@ class ChallengeNotifier extends AutoDisposeFamilyNotifier<ChallengeState, String
       },
     );
   }
+
+  Future<void> deleteChallenge({
+    required String challengeId,
+    void Function()? successCallBack,
+    void Function(String error)? failureCallBack,
+  }) async {
+    final ds = ref.read(challengeDataSourceProvider);
+    final result = await ds.deleteChallenge(challengeId: challengeId);
+    result.fold(
+      (f) => failureCallBack?.call(f.message),
+      (_) {
+        fetchChallenges();
+        fetchStats();
+        successCallBack?.call();
+      },
+    );
+  }
 }
 

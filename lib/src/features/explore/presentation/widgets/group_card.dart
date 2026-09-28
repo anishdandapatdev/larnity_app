@@ -14,6 +14,7 @@ import 'package:larnity/src/core/router/router.dart';
 
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
+import 'package:larnity/src/features/group/data/datasource/member_datasource.dart';
 
 class GroupCard extends ConsumerWidget {
   final GroupModel? group;
@@ -76,9 +77,10 @@ class GroupCard extends ConsumerWidget {
     final currentUserId = ref.watch(authProvider).user?.id ??
         ref.watch(supabaseClientProvider).auth.currentUser?.id;
     final groupState = ref.watch(groupProvider);
+    final membershipsMap = ref.watch(userMembershipsProvider).value ?? {};
     final isOwner = group?.userId != null && group?.userId == currentUserId;
-    final isMember =
-        groupState.groups?.any((g) => g.id == group?.id) ?? false;
+    final isMember = (groupState.groups?.any((g) => g.id == group?.id) ?? false) ||
+        (group?.id != null && membershipsMap.containsKey(group!.id));
     final isJoined = isOwner || isMember;
 
     final mPrice = group?.monthlyPrice ?? 0;

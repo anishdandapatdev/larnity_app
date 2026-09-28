@@ -192,7 +192,9 @@ class LiveClassRoomScreen extends ConsumerWidget {
                           );
                         },
                         onTap: (calendarTapDetails) {
-                          if (calendarTapDetails.appointments == null || calendarTapDetails.appointments!.isEmpty) {
+                          if (isOwnerOrAdmin &&
+                              (calendarTapDetails.appointments == null ||
+                                  calendarTapDetails.appointments!.isEmpty)) {
                             showDialog(
                               context: context,
                               builder: (context) => Dialog(

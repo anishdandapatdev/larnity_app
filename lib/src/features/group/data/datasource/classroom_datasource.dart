@@ -276,4 +276,26 @@ class ClassroomDataSource {
       return Left(Failure(e.toString()));
     }
   }
+
+  Future<Either<Failure, ContentModel>> updateContent({
+    required ContentModel content,
+  }) async {
+    try {
+      final response = await supabaseClient
+          .from(SupabaseTable.content)
+          .update(content.toMap())
+          .eq('id', content.id!)
+          .select()
+          .single();
+      final updated = ContentModel.fromMap(response);
+      Log.info('Updated content: ${updated.id}');
+      return Right(updated);
+    } on PostgrestException catch (e) {
+      Log.error('updateContent error: ${e.message}');
+      return Left(Failure(e.message));
+    } catch (e) {
+      Log.error('updateContent error: $e');
+      return Left(Failure(e.toString()));
+    }
+  }
 }

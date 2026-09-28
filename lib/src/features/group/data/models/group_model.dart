@@ -174,19 +174,29 @@ class GroupModel extends Equatable {
       jsonDescription: map['jsonDescription']?.toString(),
       htmlDescription: map['htmlDescription']?.toString(),
       googleSheetId: map['googleSheetId']?.toString(),
-      enableGoogleSheetSync: map['enableGoogleSheetSync'] as bool?,
+      enableGoogleSheetSync: map['enableGoogleSheetSync'] is bool
+          ? map['enableGoogleSheetSync'] as bool
+          : (map['enableGoogleSheetSync'] == 1 ||
+              map['enableGoogleSheetSync']?.toString() == 'true'),
       icon: map['icon']?.toString(),
       privacy: GroupPrivacy.values.firstWhere(
         (e) => e.name.toUpperCase() == map['privacy']?.toString().toUpperCase(),
         orElse: () => GroupPrivacy.PUBLIC,
       ),
-      active: map['active'] as bool? ?? true,
+      active: map['active'] is bool
+          ? map['active'] as bool
+          : (map['active'] == null
+              ? true
+              : (map['active'] == 1 || map['active']?.toString() == 'true')),
       userId: map['userId']?.toString(),
       domain: map['domain']?.toString(),
       monthlyPrice: (map['monthlyPrice'] as num?)?.toInt(),
       yearlyPrice: (map['yearlyPrice'] as num?)?.toInt(),
       lifetimePrice: (map['lifetimePrice'] as num?)?.toInt(),
-      isSuspended: map['isSuspended'] as bool? ?? false,
+      isSuspended: map['isSuspended'] is bool
+          ? map['isSuspended'] as bool
+          : (map['isSuspended'] == 1 ||
+              map['isSuspended']?.toString() == 'true'),
       updatedAt: map['updated_at'] != null
           ? DateTime.tryParse(map['updated_at'].toString())
           : null,

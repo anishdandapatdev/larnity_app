@@ -193,8 +193,10 @@ class EventRoomScreen extends ConsumerWidget {
                           );
                         },
                         onTap: (calendarTapDetails) {
-                          // Tap on an empty slot allows adding an event directly
-                          if (calendarTapDetails.appointments == null || calendarTapDetails.appointments!.isEmpty) {
+                          // Tap on an empty slot allows adding an event directly (admin/owner only)
+                          if (isOwnerOrAdmin &&
+                              (calendarTapDetails.appointments == null ||
+                                  calendarTapDetails.appointments!.isEmpty)) {
                             showDialog(
                               context: context,
                               builder: (context) => Dialog(

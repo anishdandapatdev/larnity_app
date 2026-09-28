@@ -184,17 +184,26 @@ class ChallengeModel extends Equatable {
       updatedAt: map['updated_at'] != null
           ? DateTime.tryParse(map['updated_at'].toString())
           : null,
-      dayCount: map['ChallengeDays'] is List
-          ? (map['ChallengeDays'] as List).length
-          : (map['ChallengeDays'] is Map
-              ? (map['ChallengeDays']['count'] as int?)
-              : null),
-      registrationCount: map['ChallengeRegistrations'] is List
-          ? (map['ChallengeRegistrations'] as List).length
-          : (map['ChallengeRegistrations'] is Map
-              ? (map['ChallengeRegistrations']['count'] as int?)
-              : null),
+      dayCount: _extractCount(map['ChallengeDays']),
+      registrationCount: _extractCount(map['ChallengeRegistrations']),
     );
+  }
+
+  static int? _extractCount(dynamic val) {
+    if (val == null) return null;
+    if (val is List) {
+      if (val.isEmpty) return 0;
+      final first = val.first;
+      if (first is Map && first.containsKey('count')) {
+        return (first['count'] as num?)?.toInt();
+      }
+      return val.length;
+    }
+    if (val is Map && val.containsKey('count')) {
+      return (val['count'] as num?)?.toInt();
+    }
+    if (val is num) return val.toInt();
+    return null;
   }
 
   bool get isFree => type == 'FREE';

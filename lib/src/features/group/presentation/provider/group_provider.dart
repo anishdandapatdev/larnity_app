@@ -6,25 +6,49 @@ import 'package:larnity/src/core/utils/async_states.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/features/explore/domain/category.dart';
 import 'package:larnity/src/features/group/data/datasource/group_datasource.dart';
+import 'package:larnity/src/features/group/data/datasource/member_datasource.dart';
 import 'package:larnity/src/features/group/data/models/group_model.dart';
 
 final groupProvider = NotifierProvider<GroupNotifier, GroupState>(
   GroupNotifier.new,
 );
 
+/// Checks whether the currently logged-in user is the owner or an admin of a specific group by groupId.
+final isGroupAdminOrOwnerForGroupProvider =
+    Provider.family<bool, String?>((ref, groupId) {
+  if (groupId == null || groupId.isEmpty) return false;
+  final currentUserId = ref.watch(authProvider).user?.id ??
+      ref.watch(supabaseClientProvider).auth.currentUser?.id;
+  if (currentUserId == null || currentUserId.isEmpty) return false;
+
+  // 1. Check if user is creator of the group
+  final activeGroup = ref.watch(groupProvider).group;
+  if (activeGroup?.id == groupId && activeGroup?.userId == currentUserId) {
+    return true;
+  }
+  final groups = ref.watch(groupProvider).groups ?? [];
+  final targetGroup = groups.where((g) => g.id == groupId).firstOrNull;
+  if (targetGroup != null && targetGroup.userId == currentUserId) {
+    return true;
+  }
+
+  // 2. Check user's membership role in userMembershipsProvider
+  final memberships = ref.watch(userMembershipsProvider).value ?? {};
+  final member = memberships[groupId];
+  if (member != null && member.isActive) {
+    if (member.isAdmin || member.isManager || member.planType == 'OWNER') {
+      return true;
+    }
+  }
+
+  return false;
+});
+
 /// Checks whether the currently logged-in user is the owner or an admin of the active group.
 final isGroupAdminOrOwnerProvider = Provider<bool>((ref) {
   final group = ref.watch(groupProvider).group;
-  final currentUserId = ref.watch(authProvider).user?.id ??
-      ref.watch(supabaseClientProvider).auth.currentUser?.id;
-  if (group == null || currentUserId == null || currentUserId.isEmpty) {
-    return false;
-  }
-  // Group creator is always owner/admin
-  if (group.userId != null && group.userId == currentUserId) {
-    return true;
-  }
-  return false;
+  if (group == null || group.id == null) return false;
+  return ref.watch(isGroupAdminOrOwnerForGroupProvider(group.id));
 });
 
 class GroupNotifier extends Notifier<GroupState> {
@@ -189,6 +213,21 @@ class GroupNotifier extends Notifier<GroupState> {
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    final currentUserId = ref.read(authProvider).user?.id ??
+        ref.read(supabaseClientProvider).auth.currentUser?.id;
+    final isAllowed = ref.read(isGroupAdminOrOwnerForGroupProvider(group.id)) ||
+        (group.userId != null && group.userId == currentUserId);
+    if (!isAllowed) {
+      final error =
+          "Permission denied: Only group admins or owners can update group details.";
+      state = state.copyWith(
+        createState: AsyncState.failure,
+        error: error,
+      );
+      failureCallBack?.call(error);
+      return;
+    }
+
     final dataSource = ref.read(groupDataSourceProvider);
     state = state.copyWith(createState: AsyncState.loading);
     final response = await dataSource.updateGroup(group: group);

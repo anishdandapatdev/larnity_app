@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
+import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/features/group/data/datasource/discussion_datasource.dart';
 import 'package:larnity/src/features/group/data/models/post_model.dart';
 import 'package:larnity/src/features/group/data/models/comment_model.dart';
@@ -78,6 +79,7 @@ class DiscussionNotifier
 
   Future<void> fetchPosts() async {
     final ds = ref.read(discussionDataSourceProvider);
+    final currentUserId = ref.read(authProvider).user?.id;
     state = state.copyWith(fetchState: AsyncState.loading, offset: 0);
 
     final channelResult = await ds.getDefaultChannelId(_groupId);
@@ -96,6 +98,7 @@ class DiscussionNotifier
           channelId: channelId,
           limit: _pageSize,
           offset: 0,
+          currentUserId: currentUserId,
         );
 
         result.fold(
@@ -122,6 +125,7 @@ class DiscussionNotifier
     if (!state.hasMore || state.fetchState == AsyncState.loading) return;
 
     final ds = ref.read(discussionDataSourceProvider);
+    final currentUserId = ref.read(authProvider).user?.id;
 
     if (state.channelId == null) return;
 
@@ -129,6 +133,7 @@ class DiscussionNotifier
       channelId: state.channelId!,
       limit: _pageSize,
       offset: state.offset,
+      currentUserId: currentUserId,
     );
 
     result.fold(

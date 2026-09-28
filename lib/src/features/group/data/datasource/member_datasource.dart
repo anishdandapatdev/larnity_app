@@ -52,12 +52,22 @@ class MemberDataSource {
     required String userId,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.members)
-          .select('*, profiles(*)')
-          .eq('groupId', groupId)
-          .eq('userId', userId)
-          .maybeSingle();
+      Map<String, dynamic>? response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.members)
+            .select('*, profiles(*)')
+            .eq('groupId', groupId)
+            .eq('userId', userId)
+            .maybeSingle();
+      } catch (_) {
+        response = await supabaseClient
+            .from(SupabaseTable.members)
+            .select()
+            .eq('groupId', groupId)
+            .eq('userId', userId)
+            .maybeSingle();
+      }
 
       if (response == null) return const Right(null);
       return Right(MemberModel.fromMap(response));
@@ -70,36 +80,11 @@ class MemberDataSource {
     }
   }
 
-  /// Add a member to a group.
+  /// Add a member to a group (delegates to addOrUpdateMember for idempotent upsert).
   Future<Either<Failure, MemberModel>> addMember({
     required MemberModel member,
   }) async {
-    try {
-      Map<String, dynamic> response;
-      try {
-        response = await supabaseClient
-            .from(SupabaseTable.members)
-            .insert(member.toMap())
-            .select('*, profiles(*)')
-            .single();
-      } catch (_) {
-        response = await supabaseClient
-            .from(SupabaseTable.members)
-            .insert(member.toMap())
-            .select()
-            .single();
-      }
-
-      final created = MemberModel.fromMap(response);
-      Log.info('Added member ${created.userId} to group ${created.groupId}');
-      return Right(created);
-    } on PostgrestException catch (e) {
-      Log.error('addMember error: ${e.message}');
-      return Left(Failure(e.message));
-    } catch (e) {
-      Log.error('addMember error: $e');
-      return Left(Failure(e.toString()));
-    }
+    return addOrUpdateMember(member: member);
   }
 
   /// Add or update membership for a user in a group (idempotent for renewals and re-subscriptions).
@@ -107,43 +92,30 @@ class MemberDataSource {
     required MemberModel member,
   }) async {
     try {
-      final existingRes = await getMemberByUserId(
-        groupId: member.groupId,
-        userId: member.userId,
-      );
+      final memberMap = member.toMap()..remove('id');
+      Map<String, dynamic> response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.members)
+            .upsert(memberMap, onConflict: 'groupId,userId')
+            .select('*, profiles(*)')
+            .single();
+      } catch (_) {
+        response = await supabaseClient
+            .from(SupabaseTable.members)
+            .upsert(memberMap, onConflict: 'groupId,userId')
+            .select()
+            .single();
+      }
 
-      return await existingRes.fold(
-        (failure) => addMember(member: member),
-        (existing) async {
-          if (existing != null && existing.id != null) {
-            final updateData = member.toMap()..remove('id');
-            Map<String, dynamic> response;
-            try {
-              response = await supabaseClient
-                  .from(SupabaseTable.members)
-                  .update(updateData)
-                  .eq('id', existing.id!)
-                  .select('*, profiles(*)')
-                  .single();
-            } catch (_) {
-              response = await supabaseClient
-                  .from(SupabaseTable.members)
-                  .update(updateData)
-                  .eq('id', existing.id!)
-                  .select()
-                  .single();
-            }
-
-            final updated = MemberModel.fromMap(response);
-            Log.info(
-              'Updated existing membership for ${updated.userId} in group ${updated.groupId}',
-            );
-            return Right(updated);
-          } else {
-            return addMember(member: member);
-          }
-        },
+      final updated = MemberModel.fromMap(response);
+      Log.info(
+        'Successfully added/updated membership for ${updated.userId} in group ${updated.groupId}',
       );
+      return Right(updated);
+    } on PostgrestException catch (e) {
+      Log.error('addOrUpdateMember PostgrestException: ${e.message}');
+      return Left(Failure(e.message));
     } catch (e) {
       Log.error('addOrUpdateMember error: $e');
       return Left(Failure(e.toString()));
@@ -298,11 +270,19 @@ class MemberDataSource {
     required String userId,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.members)
-          .select()
-          .eq('userId', userId)
-          .order('created_at', ascending: false);
+      dynamic response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.members)
+            .select()
+            .eq('userId', userId)
+            .order('created_at', ascending: false);
+      } catch (_) {
+        response = await supabaseClient
+            .from(SupabaseTable.members)
+            .select()
+            .eq('userId', userId);
+      }
 
       final members = (response as List)
           .map((e) => MemberModel.fromMap(e as Map<String, dynamic>))

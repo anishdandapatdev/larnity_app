@@ -27,22 +27,42 @@ class ChallengeDataSource {
     String? type,
   }) async {
     try {
-      var query = supabaseClient
-          .from(SupabaseTable.challenges)
-          .select('*, ChallengeDays(count), ChallengeRegistrations(count)')
-          .eq('groupId', groupId);
+      List<dynamic> response;
+      try {
+        var query = supabaseClient
+            .from(SupabaseTable.challenges)
+            .select('*, ChallengeDays(count), ChallengeRegistrations(count)')
+            .eq('groupId', groupId);
 
-      if (status != null) {
-        final queryStatus =
-            (status == 'REGISTRATION_OPEN') ? 'PUBLISHED' : status;
-        query = query.eq('status', queryStatus);
-      }
-      if (type != null) {
-        final isPaid = type == 'PAID';
-        query = query.eq('isPaid', isPaid);
-      }
+        if (status != null) {
+          final queryStatus =
+              (status == 'REGISTRATION_OPEN') ? 'PUBLISHED' : status;
+          query = query.eq('status', queryStatus);
+        }
+        if (type != null) {
+          final isPaid = type == 'PAID';
+          query = query.eq('isPaid', isPaid);
+        }
 
-      final response = await query.order('created_at', ascending: false);
+        response = await query.order('created_at', ascending: false);
+      } catch (relationErr) {
+        Log.warning('Relational getChallenges query failed, falling back to simple select: $relationErr');
+        var fallbackQuery = supabaseClient
+            .from(SupabaseTable.challenges)
+            .select('*')
+            .eq('groupId', groupId);
+
+        if (status != null) {
+          final queryStatus =
+              (status == 'REGISTRATION_OPEN') ? 'PUBLISHED' : status;
+          fallbackQuery = fallbackQuery.eq('status', queryStatus);
+        }
+        if (type != null) {
+          final isPaid = type == 'PAID';
+          fallbackQuery = fallbackQuery.eq('isPaid', isPaid);
+        }
+        response = await fallbackQuery.order('created_at', ascending: false);
+      }
 
       final challenges = (response as List)
           .map((e) => ChallengeModel.fromMap(e as Map<String, dynamic>))
@@ -238,7 +258,7 @@ class ChallengeDataSource {
           .from(SupabaseTable.challenges)
           .select('id')
           .eq('groupId', groupId)
-          .or('status.eq.PUBLISHED,status.eq.LIVE')
+          .or('status.eq.PUBLISHED,status.eq.LIVE,status.eq.REGISTRATION_OPEN')
           .count(CountOption.exact);
 
       final live = await supabaseClient
@@ -258,6 +278,27 @@ class ChallengeDataSource {
       return Left(Failure(e.message));
     } catch (e) {
       Log.error('getChallengeStats error: $e');
+      return Left(Failure(e.toString()));
+    }
+  }
+
+  /// Delete a challenge.
+  Future<Either<Failure, void>> deleteChallenge({
+    required String challengeId,
+  }) async {
+    try {
+      await supabaseClient
+          .from(SupabaseTable.challenges)
+          .delete()
+          .eq('id', challengeId);
+
+      Log.info('Deleted challenge $challengeId');
+      return const Right(null);
+    } on PostgrestException catch (e) {
+      Log.error('deleteChallenge error: ${e.message}');
+      return Left(Failure(e.message));
+    } catch (e) {
+      Log.error('deleteChallenge error: $e');
       return Left(Failure(e.toString()));
     }
   }

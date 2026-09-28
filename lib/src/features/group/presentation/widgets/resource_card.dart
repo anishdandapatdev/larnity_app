@@ -10,6 +10,7 @@ import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
 import 'package:larnity/src/core/ui/widgets/app_dropdown.dart';
 import 'package:larnity/src/features/group/data/models/resource_model.dart';
+import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/group/presentation/provider/treasure_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -27,6 +28,9 @@ class ResourceCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isOwnerOrAdmin =
+        ref.watch(isGroupAdminOrOwnerForGroupProvider(resource.groupId));
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.darkBgContainer,
@@ -69,11 +73,12 @@ class ResourceCard extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    AppDropdown(
-                      button: const Icon(
-                        Icons.more_vert,
-                        color: AppColors.white,
-                      ),
+                    if (isOwnerOrAdmin)
+                      AppDropdown(
+                        button: const Icon(
+                          Icons.more_vert,
+                          color: AppColors.white,
+                        ),
                       overlayWidth: 160,
                       overlayAlignment: Alignment.centerRight,
                       onItemSelected: (value) {

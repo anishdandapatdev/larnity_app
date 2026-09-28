@@ -61,71 +61,116 @@ class _JobRoomScreenState extends ConsumerState<JobRoomScreen> {
           },
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),
-        child: Column(
-          children: [
-            AppSizes.xs.ph,
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppStrings.jobRoom,
-                      style: AppTextStyles.headline2(color: AppColors.white),
-                    ),
-                    Text(
-                      "${jobs.length} ${AppStrings.jobsAvailable}",
-                      style: AppTextStyles.overLine(),
-                    ),
-                  ],
-                ),
-                if (isOwnerOrAdmin)
-                  AppButton(
-                    isExpanded: false,
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => const Dialog(
-                          backgroundColor: AppColors.bgBlue,
-                          child: AddJob(),
-                        ),
-                      );
-                    },
-                    prefix: const HugeIcon(
-                      icon: HugeIconsStrokeRounded.addCircle,
-                      color: AppColors.black,
-                    ),
-                    label: AppStrings.postJob,
-                    labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
-                    bgColor: AppColors.primaryOrange,
-                    radius: AppSizes.xxxs,
-                  ),
-              ],
-            ),
-            AppSizes.lg.ph,
-            Expanded(
-              child: jobState.fetchState == AsyncState.loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : jobs.isEmpty
-                  ? const Center(
-                      child: Text(
-                        "No jobs available yet.",
-                        style: TextStyle(color: AppColors.skyBlue),
+      body: RefreshIndicator(
+        color: AppColors.primaryOrange,
+        backgroundColor: AppColors.darkBgContainer,
+        onRefresh: () async {
+          await ref.read(jobProvider(groupId).notifier).fetchJobs();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),
+          child: Column(
+            children: [
+              AppSizes.xs.ph,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppStrings.jobRoom,
+                        style: AppTextStyles.headline2(color: AppColors.white),
                       ),
-                    )
-                  : ListView.separated(
-                      itemCount: jobs.length,
-                      separatorBuilder: (context, index) => AppSizes.xs.ph,
-                      itemBuilder: (context, index) {
-                        return JobCard(job: jobs[index]);
+                      Text(
+                        "${jobs.length} ${AppStrings.jobsAvailable}",
+                        style: AppTextStyles.overLine(),
+                      ),
+                    ],
+                  ),
+                  if (isOwnerOrAdmin)
+                    AppButton(
+                      isExpanded: false,
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => const Dialog(
+                            backgroundColor: AppColors.bgBlue,
+                            child: AddJob(),
+                          ),
+                        );
                       },
+                      prefix: const HugeIcon(
+                        icon: HugeIconsStrokeRounded.addCircle,
+                        color: AppColors.black,
+                      ),
+                      label: AppStrings.postJob,
+                      labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
+                      bgColor: AppColors.primaryOrange,
+                      radius: AppSizes.xxxs,
                     ),
-            ),
-          ],
+                ],
+              ),
+              AppSizes.lg.ph,
+              Expanded(
+                child: jobState.fetchState == AsyncState.loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : jobs.isEmpty
+                    ? Center(
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const HugeIcon(
+                                icon: HugeIconsStrokeRounded.briefcase02,
+                                color: AppColors.skyBlue,
+                                size: 48,
+                              ),
+                              AppSizes.sm.ph,
+                              const Text(
+                                "No jobs available yet.",
+                                style: TextStyle(color: AppColors.skyBlue, fontSize: 16),
+                              ),
+                              if (isOwnerOrAdmin) ...[
+                                AppSizes.md.ph,
+                                AppButton(
+                                  isExpanded: false,
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => const Dialog(
+                                        backgroundColor: AppColors.bgBlue,
+                                        child: AddJob(),
+                                      ),
+                                    );
+                                  },
+                                  prefix: const HugeIcon(
+                                    icon: HugeIconsStrokeRounded.addCircle,
+                                    color: AppColors.black,
+                                  ),
+                                  label: "Post First Job",
+                                  labelStyle: AppTextStyles.bodyText2(color: AppColors.black),
+                                  bgColor: AppColors.primaryOrange,
+                                  radius: AppSizes.xxxs,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: jobs.length,
+                        separatorBuilder: (context, index) => AppSizes.xs.ph,
+                        itemBuilder: (context, index) {
+                          return JobCard(job: jobs[index]);
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

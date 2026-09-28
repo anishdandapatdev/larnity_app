@@ -131,6 +131,8 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
         widget.initialTab == PurchaseTab.groups ? 'Purchased' : 'All';
     Future.microtask(() {
       ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+      ref.invalidate(userMembershipsProvider);
+      ref.invalidate(purchasedCoursesProvider);
     });
   }
 
@@ -144,6 +146,9 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
           _selectedGroupFilter = 'Purchased';
         }
       });
+      ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+      ref.invalidate(userMembershipsProvider);
+      ref.invalidate(purchasedCoursesProvider);
     }
   }
 
@@ -172,6 +177,7 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
 
   Future<void> _onRefresh() async {
     ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+    ref.invalidate(userMembershipsProvider);
     ref.invalidate(purchasedCoursesProvider);
     await Future.delayed(const Duration(milliseconds: 300));
   }
@@ -186,6 +192,7 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
       extra: {
         'courseId': item.course.id!,
         'courseName': item.course.title ?? 'Course',
+        'groupId': item.course.groupId,
       },
     );
   }
@@ -218,8 +225,11 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
 
     final ownedGroups =
         userGroups.where((g) => g.userId == currentUserId).toList();
-    final purchasedOtherGroups =
-        userGroups.where((g) => g.userId != currentUserId).toList();
+    final purchasedOtherGroups = userGroups.where((g) {
+      if (g.userId != currentUserId) return true;
+      final m = membershipsMap[g.id];
+      return m != null && m.planType != 'OWNER';
+    }).toList();
 
     final coursesFromPurchased =
         courses.where((c) => c.group?.userId != currentUserId).toList();

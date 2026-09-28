@@ -56,6 +56,9 @@ class _JobCardState extends ConsumerState<JobCard> {
     final hasApplied = appState?.hasApplied ?? false;
     final isCheckingStatus = appState?.checkState == AsyncState.loading;
 
+    final isOwnerOrAdmin =
+        ref.watch(isGroupAdminOrOwnerForGroupProvider(widget.job.groupId));
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.darkBgContainer,
@@ -101,22 +104,23 @@ class _JobCardState extends ConsumerState<JobCard> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: AppColors.red),
-                      onPressed: () {
-                        final groupId = ref.read(groupProvider).group?.id;
-                        if (groupId != null && widget.job.id != null) {
-                          ref.read(jobProvider(groupId).notifier).deleteJob(
-                            jobId: widget.job.id!,
-                            successCallBack: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Job deleted')),
-                              );
-                            },
-                          );
-                        }
-                      },
-                    ),
+                    if (isOwnerOrAdmin)
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: AppColors.red),
+                        onPressed: () {
+                          final groupId = widget.job.groupId;
+                          if (widget.job.id != null) {
+                            ref.read(jobProvider(groupId).notifier).deleteJob(
+                              jobId: widget.job.id!,
+                              successCallBack: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Job deleted')),
+                                );
+                              },
+                            );
+                          }
+                        },
+                      ),
                   ],
                 ),
 

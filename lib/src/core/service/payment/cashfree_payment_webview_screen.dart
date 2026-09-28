@@ -15,6 +15,7 @@ import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/utils/logger.dart';
 import 'package:larnity/src/core/utils/show_snackbar.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
+import 'package:larnity/src/features/course/presentation/view/purchase_course_screen.dart';
 import 'package:larnity/src/features/group/data/datasource/member_datasource.dart';
 import 'package:larnity/src/features/group/data/models/group_model.dart';
 import 'package:larnity/src/features/group/data/models/member_model.dart';
@@ -197,6 +198,8 @@ class _CashfreePaymentWebViewScreenState
         // Set selected group & refresh user's groups
         ref.read(groupProvider.notifier).setSelectedGroup(widget.group!);
         ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+        ref.invalidate(userMembershipsProvider);
+        ref.invalidate(purchasedCoursesProvider);
 
         if (!mounted) return;
 

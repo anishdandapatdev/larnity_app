@@ -98,31 +98,74 @@ class GroupDataSource {
       // 2. Fetch groups where user is an active member
       final joinedGroups = <GroupModel>[];
       try {
-        final memberRows = await supabaseClient
-            .from(SupabaseTable.members)
-            .select('groupId')
-            .eq('userId', userId);
+        // Try relational join with Group first
+        try {
+          final memberWithGroupRows = await supabaseClient
+              .from(SupabaseTable.members)
+              .select('groupId, Group(*)')
+              .eq('userId', userId);
 
-        final groupIds = (memberRows as List)
-            .map((r) => r['groupId']?.toString())
-            .whereType<String>()
-            .where((id) => id.isNotEmpty)
-            .toSet()
-            .toList();
-
-        if (groupIds.isNotEmpty) {
-          final joinedResponse = await supabaseClient
-              .from('Group')
-              .select()
-              .inFilter('id', groupIds);
-
-          for (var data in joinedResponse as List) {
+          for (var r in memberWithGroupRows as List) {
             try {
-              joinedGroups.add(
-                GroupModel.fromMap(data as Map<String, dynamic>),
-              );
+              if (r is Map && r['Group'] != null && r['Group'] is Map<String, dynamic>) {
+                joinedGroups.add(
+                  GroupModel.fromMap(r['Group'] as Map<String, dynamic>),
+                );
+              }
             } catch (e) {
-              Log.error("Error parsing joined group: $e");
+              Log.error("Error parsing joined group from relational select: $e");
+            }
+          }
+        } catch (e) {
+          Log.info("Relational Group join on Members unavailable: $e");
+        }
+
+        // If relational join didn't populate joined groups, query Members then Group
+        if (joinedGroups.isEmpty) {
+          final memberRows = await supabaseClient
+              .from(SupabaseTable.members)
+              .select('groupId')
+              .eq('userId', userId);
+
+          final groupIds = (memberRows as List)
+              .map((r) => r['groupId']?.toString())
+              .whereType<String>()
+              .where((id) => id.isNotEmpty)
+              .toSet()
+              .toList();
+
+          if (groupIds.isNotEmpty) {
+            try {
+              final joinedResponse = await supabaseClient
+                  .from('Group')
+                  .select()
+                  .inFilter('id', groupIds);
+
+              for (var data in joinedResponse as List) {
+                try {
+                  joinedGroups.add(
+                    GroupModel.fromMap(data as Map<String, dynamic>),
+                  );
+                } catch (e) {
+                  Log.error("Error parsing joined group: $e");
+                }
+              }
+            } catch (inFilterErr) {
+              Log.error("inFilter failed on Group, falling back to individual queries: $inFilterErr");
+              for (final gId in groupIds) {
+                try {
+                  final groupRow = await supabaseClient
+                      .from('Group')
+                      .select()
+                      .eq('id', gId)
+                      .maybeSingle();
+                  if (groupRow != null) {
+                    joinedGroups.add(
+                      GroupModel.fromMap(groupRow),
+                    );
+                  }
+                } catch (_) {}
+              }
             }
           }
         }

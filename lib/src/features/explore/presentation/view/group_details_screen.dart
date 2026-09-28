@@ -15,6 +15,7 @@ import 'package:larnity/src/core/ui/widgets/app_button.dart';
 import 'package:larnity/src/core/utils/show_snackbar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:larnity/src/core/router/router.dart';
+import 'package:larnity/src/features/course/presentation/view/purchase_course_screen.dart';
 import 'package:larnity/src/features/group/data/datasource/member_datasource.dart';
 import 'package:larnity/src/features/group/data/models/group_model.dart';
 import 'package:larnity/src/features/group/data/models/member_model.dart';
@@ -35,6 +36,8 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+      ref.invalidate(userMembershipsProvider);
+      ref.invalidate(purchasedCoursesProvider);
     });
   }
 
@@ -610,6 +613,8 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen> {
                             ref
                                 .read(groupProvider.notifier)
                                 .setSelectedGroup(selectedGroup);
+                            ref.invalidate(userMembershipsProvider);
+                            ref.invalidate(purchasedCoursesProvider);
                             showSuccessToast(
                               content: '🎉 Welcome to ${selectedGroup.name}!',
                             );
@@ -1430,6 +1435,8 @@ void _showPaymentSheet(
                                     ref
                                         .read(groupProvider.notifier)
                                         .setSelectedGroup(group);
+                                    ref.invalidate(userMembershipsProvider);
+                                    ref.invalidate(purchasedCoursesProvider);
                                     if (ctx.mounted) Navigator.of(ctx).pop();
                                     showSuccessToast(
                                       content: '🎉 Welcome to ${group.name}!',

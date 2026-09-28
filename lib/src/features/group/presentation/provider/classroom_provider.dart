@@ -5,6 +5,7 @@ import 'package:larnity/src/features/group/data/models/course_model.dart';
 import 'package:larnity/src/features/group/data/models/module_model.dart';
 import 'package:larnity/src/features/group/data/models/section_model.dart';
 import 'package:larnity/src/features/group/data/models/content_model.dart';
+import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 
 class ClassroomState {
   final AsyncState? fetchState;
@@ -87,11 +88,19 @@ class ClassroomNotifier
     );
   }
 
+  bool _canModify() {
+    return ref.read(isGroupAdminOrOwnerForGroupProvider(_groupId));
+  }
+
   Future<void> createCourse({
     required CourseModel course,
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    if (!_canModify()) {
+      failureCallBack?.call("Permission denied: You do not have permission to create courses in this group.");
+      return;
+    }
     final ds = ref.read(classroomDataSourceProvider);
     state = state.copyWith(createState: AsyncState.loading);
     final result = await ds.createCourse(course: course);
@@ -118,6 +127,10 @@ class ClassroomNotifier
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    if (!_canModify()) {
+      failureCallBack?.call("Permission denied: You do not have permission to delete courses in this group.");
+      return;
+    }
     final ds = ref.read(classroomDataSourceProvider);
     final result = await ds.deleteCourse(courseId: courseId);
     result.fold((failure) => failureCallBack?.call(failure.message), (_) {
@@ -133,6 +146,10 @@ class ClassroomNotifier
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    if (!_canModify()) {
+      failureCallBack?.call("Permission denied: You do not have permission to update courses in this group.");
+      return;
+    }
     final ds = ref.read(classroomDataSourceProvider);
     state = state.copyWith(createState: AsyncState.loading);
     final result = await ds.updateCourse(course: course);
@@ -167,6 +184,10 @@ class ClassroomNotifier
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    if (!_canModify()) {
+      failureCallBack?.call("Permission denied: You do not have permission to add modules.");
+      return;
+    }
     final ds = ref.read(classroomDataSourceProvider);
     final result = await ds.createModule(module: module);
     result.fold((f) => failureCallBack?.call(f.message), (created) {
@@ -182,6 +203,10 @@ class ClassroomNotifier
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    if (!_canModify()) {
+      failureCallBack?.call("Permission denied: You do not have permission to delete modules.");
+      return;
+    }
     final ds = ref.read(classroomDataSourceProvider);
     final result = await ds.deleteModule(moduleId: moduleId);
     result.fold((f) => failureCallBack?.call(f.message), (_) {
@@ -199,6 +224,10 @@ class ClassroomNotifier
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    if (!_canModify()) {
+      failureCallBack?.call("Permission denied: You do not have permission to add sections.");
+      return;
+    }
     final ds = ref.read(classroomDataSourceProvider);
     final result = await ds.createSection(section: section);
     result.fold((f) => failureCallBack?.call(f.message), (created) {
@@ -214,6 +243,10 @@ class ClassroomNotifier
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    if (!_canModify()) {
+      failureCallBack?.call("Permission denied: You do not have permission to delete sections.");
+      return;
+    }
     final ds = ref.read(classroomDataSourceProvider);
     final result = await ds.deleteSection(sectionId: sectionId);
     result.fold((f) => failureCallBack?.call(f.message), (_) {
@@ -231,6 +264,10 @@ class ClassroomNotifier
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    if (!_canModify()) {
+      failureCallBack?.call("Permission denied: You do not have permission to add content.");
+      return;
+    }
     final ds = ref.read(classroomDataSourceProvider);
     final result = await ds.createContent(content: content);
     result.fold((f) => failureCallBack?.call(f.message), (created) {
@@ -246,8 +283,31 @@ class ClassroomNotifier
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    if (!_canModify()) {
+      failureCallBack?.call("Permission denied: You do not have permission to delete content.");
+      return;
+    }
     final ds = ref.read(classroomDataSourceProvider);
     final result = await ds.deleteContent(contentId: contentId);
+    result.fold((f) => failureCallBack?.call(f.message), (_) {
+      if (state.selectedCourse?.id != null) {
+        fetchCourseDetail(courseId: state.selectedCourse!.id!);
+      }
+      successCallBack?.call();
+    });
+  }
+
+  Future<void> updateContent({
+    required ContentModel content,
+    void Function()? successCallBack,
+    void Function(String error)? failureCallBack,
+  }) async {
+    if (!_canModify()) {
+      failureCallBack?.call("Permission denied: You do not have permission to edit content.");
+      return;
+    }
+    final ds = ref.read(classroomDataSourceProvider);
+    final result = await ds.updateContent(content: content);
     result.fold((f) => failureCallBack?.call(f.message), (_) {
       if (state.selectedCourse?.id != null) {
         fetchCourseDetail(courseId: state.selectedCourse!.id!);

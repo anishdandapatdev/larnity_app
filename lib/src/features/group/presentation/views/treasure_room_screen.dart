@@ -53,6 +53,8 @@ class _TreasureRoomScreenState extends ConsumerState<TreasureRoomScreen> {
       );
     }
 
+    final isOwnerOrAdmin =
+        ref.watch(isGroupAdminOrOwnerForGroupProvider(groupId));
     final treasureState = ref.watch(treasureProvider(groupId));
     final resources = treasureState.resources ?? [];
     final isLoading =
@@ -95,19 +97,20 @@ class _TreasureRoomScreenState extends ConsumerState<TreasureRoomScreen> {
                     ),
                   ],
                 ),
-                AppButton(
-                  isExpanded: false,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => const Dialog(
-                        backgroundColor: AppColors.bgBlue,
-                        child: AddResource(),
-                      ),
-                    );
-                  },
-                  prefix: const HugeIcon(
+                if (isOwnerOrAdmin)
+                  AppButton(
+                    isExpanded: false,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => const Dialog(
+                          backgroundColor: AppColors.bgBlue,
+                          child: AddResource(),
+                        ),
+                      );
+                    },
+                    prefix: const HugeIcon(
                     icon: HugeIconsStrokeRounded.addCircle,
                     color: AppColors.black,
                   ),

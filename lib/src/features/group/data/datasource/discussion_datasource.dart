@@ -57,18 +57,58 @@ class DiscussionDataSource {
     required String channelId,
     int limit = 20,
     int offset = 0,
+    String? currentUserId,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.post)
-          .select('*, profiles(*), Comment(count), Like(count)')
-          .eq('channelId', channelId)
-          .order('created_at', ascending: false)
-          .range(offset, offset + limit - 1);
+      dynamic response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.post)
+            .select('*, profiles(*), Comment(count), Like(count)')
+            .eq('channelId', channelId)
+            .order('created_at', ascending: false)
+            .range(offset, offset + limit - 1);
+      } catch (relationalErr) {
+        Log.warning(
+          'getPosts relational query failed ($relationalErr), falling back to simple select',
+        );
+        response = await supabaseClient
+            .from(SupabaseTable.post)
+            .select('*')
+            .eq('channelId', channelId)
+            .order('created_at', ascending: false)
+            .range(offset, offset + limit - 1);
+      }
 
-      final posts = (response as List)
-          .map((e) => PostModel.fromMap(e as Map<String, dynamic>))
+      final postList = (response as List);
+      final postIds = postList
+          .map((e) => e['id'] as String?)
+          .whereType<String>()
           .toList();
+
+      final Set<String> userLikedPostIds = {};
+      if (currentUserId != null && postIds.isNotEmpty) {
+        try {
+          final likesRes = await supabaseClient
+              .from(SupabaseTable.like)
+              .select('postId')
+              .eq('userId', currentUserId)
+              .filter('postId', 'in', postIds);
+          for (final row in (likesRes as List)) {
+            final pid = row['postId'] as String?;
+            if (pid != null) userLikedPostIds.add(pid);
+          }
+        } catch (e) {
+          Log.warning('Failed to fetch user likes: $e');
+        }
+      }
+
+      final posts = postList.map((e) {
+        final map = e as Map<String, dynamic>;
+        final id = map['id'] as String?;
+        final isLiked = id != null && userLikedPostIds.contains(id);
+        return PostModel.fromMap(map, isLikedByMe: isLiked);
+      }).toList();
 
       Log.info('Fetched ${posts.length} posts for channel $channelId');
       return Right(posts);
@@ -86,11 +126,20 @@ class DiscussionDataSource {
     required PostModel post,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.post)
-          .insert(post.toMap())
-          .select('*, profiles(*), Comment(count), Like(count)')
-          .single();
+      dynamic response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.post)
+            .insert(post.toMap())
+            .select('*, profiles(*), Comment(count), Like(count)')
+            .single();
+      } catch (e) {
+        response = await supabaseClient
+            .from(SupabaseTable.post)
+            .insert(post.toMap())
+            .select('*')
+            .single();
+      }
 
       final created = PostModel.fromMap(response);
       Log.info('Created post: ${created.id}');
@@ -109,12 +158,22 @@ class DiscussionDataSource {
     required PostModel post,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.post)
-          .update(post.toMap())
-          .eq('id', post.id!)
-          .select('*, profiles(*), Comment(count), Like(count)')
-          .single();
+      dynamic response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.post)
+            .update(post.toMap())
+            .eq('id', post.id!)
+            .select('*, profiles(*), Comment(count), Like(count)')
+            .single();
+      } catch (e) {
+        response = await supabaseClient
+            .from(SupabaseTable.post)
+            .update(post.toMap())
+            .eq('id', post.id!)
+            .select('*')
+            .single();
+      }
 
       final updated = PostModel.fromMap(response);
       Log.info('Updated post: ${updated.id}');
@@ -149,11 +208,23 @@ class DiscussionDataSource {
     required String postId,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.comment)
-          .select('*, profiles(*)')
-          .eq('postId', postId)
-          .order('created_at', ascending: true);
+      dynamic response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.comment)
+            .select('*, profiles(*)')
+            .eq('postId', postId)
+            .order('created_at', ascending: true);
+      } catch (relationalErr) {
+        Log.warning(
+          'getComments relational select failed ($relationalErr), falling back to basic query',
+        );
+        response = await supabaseClient
+            .from(SupabaseTable.comment)
+            .select('*')
+            .eq('postId', postId)
+            .order('created_at', ascending: true);
+      }
 
       final comments = (response as List)
           .map((e) => CommentModel.fromMap(e as Map<String, dynamic>))
@@ -175,11 +246,20 @@ class DiscussionDataSource {
     required CommentModel comment,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.comment)
-          .insert(comment.toMap())
-          .select('*, profiles(*)')
-          .single();
+      dynamic response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.comment)
+            .insert(comment.toMap())
+            .select('*, profiles(*)')
+            .single();
+      } catch (e) {
+        response = await supabaseClient
+            .from(SupabaseTable.comment)
+            .insert(comment.toMap())
+            .select('*')
+            .single();
+      }
 
       final created = CommentModel.fromMap(response);
       Log.info('Created comment: ${created.id}');

@@ -73,7 +73,7 @@ class PostModel extends Equatable {
     }..removeWhere((key, value) => value == null);
   }
 
-  factory PostModel.fromMap(Map<String, dynamic> map) {
+  factory PostModel.fromMap(Map<String, dynamic> map, {bool? isLikedByMe}) {
     return PostModel(
       id: map['id'] as String?,
       channelId: map['channelId'] as String,
@@ -86,23 +86,73 @@ class PostModel extends Equatable {
           ? DateTime.parse(map['created_at'] as String)
           : null,
       author: map['profiles'] as Map<String, dynamic>?,
-      commentCount: map['Comment'] is List
-          ? (map['Comment'] as List).length
-          : (map['Comment'] is Map ? (map['Comment']['count'] as int?) : null),
-      likeCount: map['Like'] is List
-          ? (map['Like'] as List).length
-          : (map['Like'] is Map ? (map['Like']['count'] as int?) : null),
+      commentCount: _extractCount(map['Comment']),
+      likeCount: _extractCount(map['Like']),
+      isLikedByMe: isLikedByMe ?? (map['isLikedByMe'] as bool?),
     );
+  }
+
+  static int? _extractCount(dynamic val) {
+    if (val == null) return null;
+    if (val is List) {
+      if (val.isEmpty) return 0;
+      final first = val.first;
+      if (first is Map && first.containsKey('count')) {
+        return (first['count'] as num?)?.toInt();
+      }
+      return val.length;
+    }
+    if (val is Map && val.containsKey('count')) {
+      return (val['count'] as num?)?.toInt();
+    }
+    if (val is num) return val.toInt();
+    return null;
   }
 
   String get authorName {
     if (author == null) return 'Unknown';
     final first = author!['firstname'] as String? ?? '';
     final last = author!['lastname'] as String? ?? '';
-    return '$first $last'.trim();
+    final full = '$first $last'.trim();
+    return full.isNotEmpty ? full : 'Anonymous';
   }
 
   String? get authorImage => author?['image'] as String?;
+
+  String? get imageUrl {
+    if (htmlContent != null && htmlContent!.isNotEmpty) {
+      final m = RegExp(r'<img[^>]+src="([^">]+)"').firstMatch(htmlContent!);
+      if (m != null) return m.group(1);
+    }
+    if (content.isNotEmpty) {
+      final m = RegExp(r'<img[^>]+src="([^">]+)"').firstMatch(content);
+      if (m != null) return m.group(1);
+      final mdMatch = RegExp(r'!\[.*?\]\((.*?)\)').firstMatch(content);
+      if (mdMatch != null) return mdMatch.group(1);
+      final m2 = RegExp(
+        r'(https?://[^\s<"]+\.(?:jpg|jpeg|png|webp|gif))',
+        caseSensitive: false,
+      ).firstMatch(content);
+      if (m2 != null) return m2.group(1);
+    }
+    return null;
+  }
+
+  String get cleanContent {
+    if (content.isEmpty) return '';
+    return content
+        .replaceAll(RegExp(r'<img[^>]*>', dotAll: true), '')
+        .replaceAll(RegExp(r'<br\s*/?>'), '\n')
+        .replaceAll(RegExp(r'</p>'), '\n')
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .trim();
+  }
 
   @override
   List<Object?> get props => [

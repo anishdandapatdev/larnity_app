@@ -357,10 +357,11 @@ GoRoute _buildCourseDetailScreenRoute() => GoRoute(
   path: Routes.courseDetail.p,
   pageBuilder: _getDefaultPageBuilderByPlatform(
     childBuilder: (_, state) {
-      final extra = state.extra as Map<String, dynamic>;
+      final extra = state.extra as Map<String, dynamic>?;
       return CourseDetailScreen(
-        courseId: extra['courseId'] as String,
-        courseName: extra['courseName'] as String,
+        courseId: extra?['courseId'] as String? ?? '',
+        courseName: extra?['courseName'] as String? ?? 'Course',
+        groupId: extra?['groupId'] as String?,
       );
     },
   ),

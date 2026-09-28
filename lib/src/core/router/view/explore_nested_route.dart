@@ -14,6 +14,8 @@ import 'package:larnity/src/core/ui/widgets/stylish_bottom_nav_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
+import 'package:larnity/src/features/course/presentation/view/purchase_course_screen.dart';
+import 'package:larnity/src/features/group/data/datasource/member_datasource.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/package/presentation/provider/package_provider.dart';
 import 'package:larnity/src/features/package_subscription/presentation/providers/package_subscription_provider.dart';
@@ -28,6 +30,12 @@ class ExploreNestedRoute extends ConsumerWidget {
       AppDropdownController();
 
   void _goBranch(BuildContext context, WidgetRef ref, int index) {
+    if (index == 1 || index == 2) {
+      ref.invalidate(userMembershipsProvider);
+      ref.invalidate(purchasedCoursesProvider);
+      ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+    }
+
     if (index == 3) {
       // User tapped Create! Run the exact flow from "Create your own group"
       final packageState = ref.read(packageProvider);

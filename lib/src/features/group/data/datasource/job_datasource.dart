@@ -57,7 +57,7 @@ class JobDataSource {
     required String groupId,
     int limit = 50,
     int offset = 0,
-    bool activeOnly = true,
+    bool activeOnly = false,
   }) async {
     try {
       var query = supabaseClient

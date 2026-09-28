@@ -36,6 +36,12 @@ class _AddJobState extends ConsumerState<AddJob> {
   bool _isLoading = false;
   final ImagePicker _picker = ImagePicker();
 
+  @override
+  void initState() {
+    super.initState();
+    _selectedEndDate = DateTime.now().add(const Duration(days: 30));
+  }
+
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -222,6 +228,9 @@ class _AddJobState extends ConsumerState<AddJob> {
             AppSizes.xxxs.ph,
             DatePickerDropdown(
               overlayHeight: 0.3.sh,
+              minDate: DateTime.now(),
+              enablePastDates: false,
+              selectedDate: _selectedEndDate,
               onDateSelected: (date) {
                 setState(() {
                   _selectedEndDate = date;
