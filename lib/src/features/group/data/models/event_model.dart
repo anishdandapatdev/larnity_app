@@ -12,6 +12,7 @@ class EventModel extends Equatable {
   final String? meetingUrl;
   final bool? isOnline;
   final int? maxParticipants;
+  final String? type;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -27,6 +28,7 @@ class EventModel extends Equatable {
     this.meetingUrl,
     this.isOnline,
     this.maxParticipants,
+    this.type,
     this.createdAt,
     this.updatedAt,
   });
@@ -43,6 +45,7 @@ class EventModel extends Equatable {
     String? meetingUrl,
     bool? isOnline,
     int? maxParticipants,
+    String? type,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -58,6 +61,7 @@ class EventModel extends Equatable {
       meetingUrl: meetingUrl ?? this.meetingUrl,
       isOnline: isOnline ?? this.isOnline,
       maxParticipants: maxParticipants ?? this.maxParticipants,
+      type: type ?? this.type,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -74,6 +78,7 @@ class EventModel extends Equatable {
       'location': location ?? 'Online', // Satisfy NOT-NULL db constraint
       'coverImg': image ?? '', // Satisfy NOT-NULL db constraint
       'link': meetingUrl ?? '',
+      'type': type ?? 'GROUPEVENT',
     }..removeWhere((key, value) => value == null);
   }
 
@@ -96,6 +101,7 @@ class EventModel extends Equatable {
       meetingUrl: map['link'] as String?,
       isOnline: map['link'] != null && (map['link'] as String).isNotEmpty,
       maxParticipants: null,
+      type: map['type'] as String? ?? 'GROUPEVENT',
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : null,
@@ -116,7 +122,7 @@ class EventModel extends Equatable {
   @override
   List<Object?> get props => [
         id, groupId, title, description, image, startAt, endAt,
-        location, meetingUrl, isOnline, maxParticipants, createdAt,
+        location, meetingUrl, isOnline, maxParticipants, type, createdAt,
       ];
 
   @override

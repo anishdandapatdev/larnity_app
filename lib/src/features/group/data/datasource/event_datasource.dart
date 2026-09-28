@@ -24,7 +24,7 @@ class EventDataSource {
           .from(SupabaseTable.event)
           .select('*')
           .eq('groupId', groupId)
-          .isFilter('type', null)
+          .neq('type', 'LIVECLASS')
           .order('date', ascending: true)
           .order('time', ascending: true);
 
@@ -51,7 +51,7 @@ class EventDataSource {
           .from(SupabaseTable.event)
           .select('*')
           .eq('groupId', groupId)
-          .isFilter('type', null)
+          .neq('type', 'LIVECLASS')
           .gte('date', DateTime.now().toIso8601String().split('T').first)
           .order('date', ascending: true)
           .order('time', ascending: true);
