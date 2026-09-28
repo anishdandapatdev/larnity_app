@@ -94,53 +94,95 @@ class ChallengeModel extends Equatable {
   }
 
   Map<String, dynamic> toMap() {
-    return <String, dynamic>{
-      'id': id,
+    int firstPrize = 0;
+    int secondPrize = 0;
+    int thirdPrize = 0;
+    if (prize != null && prize!.isNotEmpty) {
+      final reg1 = RegExp(r'1st:\s*(\d+)');
+      final reg2 = RegExp(r'2nd:\s*(\d+)');
+      final reg3 = RegExp(r'3rd:\s*(\d+)');
+      firstPrize = int.tryParse(reg1.firstMatch(prize!)?.group(1) ?? '') ?? 0;
+      secondPrize = int.tryParse(reg2.firstMatch(prize!)?.group(1) ?? '') ?? 0;
+      thirdPrize = int.tryParse(reg3.firstMatch(prize!)?.group(1) ?? '') ?? 0;
+    }
+
+    final isPaidBool = type == 'PAID' || (price != null && price! > 0);
+    String statusVal = 'PUBLISHED';
+    if (status == 'LIVE' ||
+        status == 'FINISHED' ||
+        status == 'CANCELLED' ||
+        status == 'DRAFT' ||
+        status == 'ARCHIVED') {
+      statusVal = status!;
+    }
+
+    final sDate = startDate ?? DateTime.now();
+    final eDate = endDate ?? DateTime.now().add(const Duration(days: 7));
+
+    final map = <String, dynamic>{
+      if (id != null) 'id': id,
       'groupId': groupId,
-      'title': title,
-      'description': description,
-      'image': image,
-      'startDate': startDate?.toIso8601String(),
-      'endDate': endDate?.toIso8601String(),
-      'maxParticipants': maxParticipants,
-      'prize': prize,
-      'rules': rules,
-      'jsonRules': jsonRules,
-      'htmlRules': htmlRules,
-      'isActive': isActive,
-      'status': status,
-      'type': type,
-      'price': price,
-    }..removeWhere((key, value) => value == null);
+      'title': title ?? '',
+      'description': description ?? '',
+      'thumbnail': (image != null && image!.isNotEmpty)
+          ? image
+          : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30',
+      'startDate':
+          "${sDate.year}-${sDate.month.toString().padLeft(2, '0')}-${sDate.day.toString().padLeft(2, '0')}",
+      'endDate':
+          "${eDate.year}-${eDate.month.toString().padLeft(2, '0')}-${eDate.day.toString().padLeft(2, '0')}",
+      'maxParticipants': maxParticipants ?? 100,
+      'firstPlacePrize': firstPrize,
+      'secondPlacePrize': secondPrize,
+      'thirdPlacePrize': thirdPrize,
+      'registrationFee': price?.toInt() ?? 0,
+      'isPaid': isPaidBool,
+      'status': statusVal,
+    };
+    return map;
   }
 
   factory ChallengeModel.fromMap(Map<String, dynamic> map) {
+    final first = map['firstPlacePrize'];
+    final second = map['secondPlacePrize'];
+    final third = map['thirdPlacePrize'];
+    final prizeParts = <String>[];
+    if (first != null && first != 0) prizeParts.add('1st: $first');
+    if (second != null && second != 0) prizeParts.add('2nd: $second');
+    if (third != null && third != 0) prizeParts.add('3rd: $third');
+    final synthesizedPrize =
+        prizeParts.isNotEmpty ? prizeParts.join(', ') : null;
+
+    final isPaid = map['isPaid'] == true;
+    final fee = (map['registrationFee'] as num?)?.toDouble() ?? 0.0;
+    final dbStatus = map['status'] as String?;
+
     return ChallengeModel(
       id: map['id'] as String?,
-      groupId: map['groupId'] as String,
+      groupId: (map['groupId'] as String?) ?? '',
       title: map['title'] as String?,
       description: map['description'] as String?,
-      image: map['image'] as String?,
+      image: (map['thumbnail'] ?? map['image']) as String?,
       startDate: map['startDate'] != null
-          ? DateTime.parse(map['startDate'] as String)
+          ? DateTime.tryParse(map['startDate'].toString())
           : null,
       endDate: map['endDate'] != null
-          ? DateTime.parse(map['endDate'] as String)
+          ? DateTime.tryParse(map['endDate'].toString())
           : null,
       maxParticipants: map['maxParticipants'] as int?,
-      prize: map['prize'] as String?,
+      prize: map['prize'] as String? ?? synthesizedPrize,
       rules: map['rules'] as String?,
       jsonRules: map['jsonRules'] as String?,
       htmlRules: map['htmlRules'] as String?,
       isActive: map['isActive'] as bool? ?? true,
-      status: map['status'] as String?,
-      type: map['type'] as String?,
-      price: (map['price'] as num?)?.toDouble(),
+      status: (dbStatus == 'PUBLISHED') ? 'REGISTRATION_OPEN' : dbStatus,
+      type: (map['type'] as String?) ?? (isPaid ? 'PAID' : 'FREE'),
+      price: (map['price'] as num?)?.toDouble() ?? fee,
       createdAt: map['created_at'] != null
-          ? DateTime.parse(map['created_at'] as String)
+          ? DateTime.tryParse(map['created_at'].toString())
           : null,
       updatedAt: map['updated_at'] != null
-          ? DateTime.parse(map['updated_at'] as String)
+          ? DateTime.tryParse(map['updated_at'].toString())
           : null,
       dayCount: map['ChallengeDays'] is List
           ? (map['ChallengeDays'] as List).length

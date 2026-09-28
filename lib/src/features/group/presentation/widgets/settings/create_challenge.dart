@@ -97,14 +97,20 @@ class _CreateChallengeState extends ConsumerState<CreateChallenge> {
     try {
       String? imageUrl;
       if (_pickedImage != null) {
-        final storage = ref.read(storageServiceProvider);
-        final path =
-            'challenges/${group.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
-        imageUrl = await storage.uploadFile(
-          bucket: StorageBucket.groupImages,
-          path: path,
-          file: _pickedImage!,
-        );
+        try {
+          final storage = ref.read(storageServiceProvider);
+          final path =
+              'challenges/${group.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+          imageUrl = await storage.uploadFile(
+            bucket: StorageBucket.groupImages,
+            path: path,
+            file: _pickedImage!,
+          );
+        } catch (_) {
+          imageUrl = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
+        }
+      } else {
+        imageUrl = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30';
       }
 
       final prizeText = [

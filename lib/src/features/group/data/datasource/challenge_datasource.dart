@@ -33,10 +33,13 @@ class ChallengeDataSource {
           .eq('groupId', groupId);
 
       if (status != null) {
-        query = query.eq('status', status);
+        final queryStatus =
+            (status == 'REGISTRATION_OPEN') ? 'PUBLISHED' : status;
+        query = query.eq('status', queryStatus);
       }
       if (type != null) {
-        query = query.eq('type', type);
+        final isPaid = type == 'PAID';
+        query = query.eq('isPaid', isPaid);
       }
 
       final response = await query.order('created_at', ascending: false);
@@ -235,7 +238,7 @@ class ChallengeDataSource {
           .from(SupabaseTable.challenges)
           .select('id')
           .eq('groupId', groupId)
-          .eq('status', 'REGISTRATION_OPEN')
+          .or('status.eq.PUBLISHED,status.eq.LIVE')
           .count(CountOption.exact);
 
       final live = await supabaseClient

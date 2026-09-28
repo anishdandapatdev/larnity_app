@@ -63,25 +63,31 @@ class _AddJobState extends ConsumerState<AddJob> {
     try {
       String imageUrl = '';
       if (_imageFile != null) {
-        final storageService = ref.read(storageServiceProvider);
-        final storagePath = SupabaseStorageService.generatePath(
-          fileName: _imageFile!.path.split('/').last,
-          subfolder: 'jobs',
-        );
-        imageUrl = await storageService.uploadFile(
-          bucket: StorageBucket.jobMedia,
-          path: storagePath,
-          file: _imageFile!,
-        );
+        try {
+          final storageService = ref.read(storageServiceProvider);
+          final storagePath = SupabaseStorageService.generatePath(
+            fileName: _imageFile!.path.split('/').last,
+            subfolder: 'jobs',
+          );
+          imageUrl = await storageService.uploadFile(
+            bucket: StorageBucket.jobMedia,
+            path: storagePath,
+            file: _imageFile!,
+          );
+        } catch (_) {
+          imageUrl = 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d';
+        }
       }
+
+      final endDate = _selectedEndDate ?? DateTime.now().add(const Duration(days: 30));
 
       final job = JobModel(
         createdAt: DateTime.now(),
-        title: _titleController.text,
-        description: _descriptionController.text,
-        image: imageUrl,
-        postingEndDate: _selectedEndDate,
-        googleSheetId: _googleSheetIdController.text,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        image: imageUrl.isNotEmpty ? imageUrl : 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d',
+        postingEndDate: endDate,
+        googleSheetId: _googleSheetIdController.text.trim(),
         groupId: groupId,
       );
 

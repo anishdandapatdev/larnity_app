@@ -41,12 +41,13 @@ class CommentModel extends Equatable {
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
-      'id': id,
+      if (id != null) 'id': id,
       'postId': postId,
       'userId': userId,
       'content': content,
-      'parentId': parentId,
-    }..removeWhere((key, value) => value == null);
+      'commentId': parentId,
+      'replied': parentId != null,
+    };
   }
 
   factory CommentModel.fromMap(Map<String, dynamic> map) {
@@ -55,9 +56,9 @@ class CommentModel extends Equatable {
       postId: map['postId'] as String,
       userId: map['userId'] as String,
       content: map['content'] as String,
-      parentId: map['parentId'] as String?,
+      parentId: (map['commentId'] ?? map['parentId']) as String?,
       createdAt: map['created_at'] != null
-          ? DateTime.parse(map['created_at'] as String)
+          ? DateTime.tryParse(map['created_at'].toString())
           : null,
       author: map['profiles'] as Map<String, dynamic>?,
     );

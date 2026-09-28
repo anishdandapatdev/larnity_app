@@ -49,16 +49,20 @@ class JobModel extends Equatable {
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
-      'id': id,
+      if (id != null) 'id': id,
       'created_at': createdAt.toIso8601String(),
       'title': title,
-      'description': description,
-      'image': image,
-      'postingEndDate': postingEndDate?.toIso8601String(),
-      'googleSheetId': googleSheetId,
+      'description': description ?? '',
+      'image': (image != null && image!.isNotEmpty)
+          ? image
+          : 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d',
+      'postingEndDate': (postingEndDate ??
+              DateTime.now().add(const Duration(days: 30)))
+          .toIso8601String(),
+      'googleSheetId': googleSheetId ?? '',
       'groupId': groupId,
-      'updated_at': updatedAt?.toIso8601String(),
-    }..removeWhere((key, value) => value == null);
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+    };
   }
 
   factory JobModel.fromMap(Map<String, dynamic> map) {
