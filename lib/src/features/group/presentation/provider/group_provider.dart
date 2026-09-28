@@ -36,14 +36,17 @@ class GroupNotifier extends Notifier<GroupState> {
 
     // Watch for auth state changes and refresh groups when user changes
     ref.listen(authProvider, (_, next) {
-      final userId = next.user?.id;
+      final userId = next.user?.id ??
+          ref.read(supabaseClientProvider).auth.currentUser?.id;
       if (userId != null && userId.isNotEmpty) {
         getGroupsByUser(userId: userId);
       }
     });
 
     Future.microtask(() async {
-      final userId = ref.read(authProvider).user?.id ?? "";
+      final userId = ref.read(authProvider).user?.id ??
+          ref.read(supabaseClientProvider).auth.currentUser?.id ??
+          "";
       if (userId.isNotEmpty) {
         await getGroupsByUser(userId: userId);
       }
@@ -272,7 +275,8 @@ class GroupNotifier extends Notifier<GroupState> {
   }
 
   void refreshGroupsForCurrentUser() {
-    final userId = ref.read(authProvider).user?.id;
+    final userId = ref.read(authProvider).user?.id ??
+        ref.read(supabaseClientProvider).auth.currentUser?.id;
     if (userId != null && userId.isNotEmpty) {
       getGroupsByUser(userId: userId);
     }

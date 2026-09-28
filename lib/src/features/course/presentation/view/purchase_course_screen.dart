@@ -11,8 +11,10 @@ import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/utils/logger.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
+import 'package:larnity/src/features/group/data/datasource/member_datasource.dart';
 import 'package:larnity/src/features/group/data/models/course_model.dart';
 import 'package:larnity/src/features/group/data/models/group_model.dart';
+import 'package:larnity/src/features/group/data/models/member_model.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 
 /// Representation of an enrolled / accessible course paired with its parent community.
@@ -31,7 +33,8 @@ class PurchasedCourseItem {
 final purchasedCoursesProvider =
     FutureProvider.autoDispose<List<PurchasedCourseItem>>((ref) async {
   final authState = ref.watch(authProvider);
-  final userId = authState.user?.id;
+  final userId = authState.user?.id ??
+      ref.watch(supabaseClientProvider).auth.currentUser?.id;
   if (userId == null || userId.isEmpty) {
     return [];
   }
@@ -116,13 +119,16 @@ class PurchaseCourseScreen extends ConsumerStatefulWidget {
 class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
   final TextEditingController _searchController = TextEditingController();
   late PurchaseTab _activeTab;
-  String _selectedFilter = 'All'; // 'All', 'Paid', 'Free'
+  String _selectedCourseFilter = 'All'; // 'All', 'Purchased Communities', 'Created by Me', 'Paid', 'Free'
+  late String _selectedGroupFilter; // 'Purchased', 'All', 'Created by Me'
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _activeTab = widget.initialTab;
+    _selectedGroupFilter =
+        widget.initialTab == PurchaseTab.groups ? 'Purchased' : 'All';
     Future.microtask(() {
       ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
     });
@@ -134,6 +140,9 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
     if (oldWidget.initialTab != widget.initialTab) {
       setState(() {
         _activeTab = widget.initialTab;
+        if (widget.initialTab == PurchaseTab.groups) {
+          _selectedGroupFilter = 'Purchased';
+        }
       });
     }
   }
@@ -189,12 +198,14 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final user = authState.user;
+    final currentUserId = authState.user?.id ??
+        ref.watch(supabaseClientProvider).auth.currentUser?.id;
     final groupState = ref.watch(groupProvider);
     final coursesAsync = ref.watch(purchasedCoursesProvider);
+    final membershipsMap = ref.watch(userMembershipsProvider).value ?? {};
     final userGroups = groupState.groups ?? [];
 
-    if (user == null || user.id == null || user.id!.isEmpty) {
+    if (currentUserId == null || currentUserId.isEmpty) {
       return Scaffold(
         backgroundColor: AppColors.bgBlue,
         body: SafeArea(
@@ -204,6 +215,16 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
     }
 
     final courses = coursesAsync.value ?? [];
+
+    final ownedGroups =
+        userGroups.where((g) => g.userId == currentUserId).toList();
+    final purchasedOtherGroups =
+        userGroups.where((g) => g.userId != currentUserId).toList();
+
+    final coursesFromPurchased =
+        courses.where((c) => c.group?.userId != currentUserId).toList();
+    final coursesFromOwned =
+        courses.where((c) => c.group?.userId == currentUserId).toList();
 
     final filteredCourses = courses.where((item) {
       final course = item.course;
@@ -215,15 +236,28 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
 
       if (!matchesSearch) return false;
 
-      if (_selectedFilter == 'Paid') {
+      if (_selectedCourseFilter == 'Purchased Communities') {
+        return group?.userId != currentUserId;
+      } else if (_selectedCourseFilter == 'Created by Me') {
+        return group?.userId == currentUserId;
+      } else if (_selectedCourseFilter == 'Paid') {
         return course.isPaid == true;
-      } else if (_selectedFilter == 'Free') {
+      } else if (_selectedCourseFilter == 'Free') {
         return course.isPaid != true;
       }
       return true;
     }).toList();
 
-    final filteredGroups = userGroups.where((group) {
+    List<GroupModel> groupsToFilter;
+    if (_selectedGroupFilter == 'Purchased') {
+      groupsToFilter = purchasedOtherGroups;
+    } else if (_selectedGroupFilter == 'Created by Me') {
+      groupsToFilter = ownedGroups;
+    } else {
+      groupsToFilter = userGroups;
+    }
+
+    final filteredGroups = groupsToFilter.where((group) {
       if (_searchQuery.isEmpty) return true;
       final name = group.name.toLowerCase();
       final desc = (group.description ?? '').toLowerCase();
@@ -234,6 +268,7 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
     }).toList();
 
     final isInitialLoading = coursesAsync.isLoading && courses.isEmpty;
+    final isPurchasesTab = _activeTab == PurchaseTab.groups;
 
     return Scaffold(
       backgroundColor: AppColors.bgBlue,
@@ -268,13 +303,17 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             HugeIcon(
-                              icon: HugeIconsStrokeRounded.mortarboard02,
+                              icon: isPurchasesTab
+                                  ? HugeIconsStrokeRounded.shoppingBag01
+                                  : HugeIconsStrokeRounded.mortarboard02,
                               color: AppColors.primaryOrange,
                               size: 14,
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'ENROLLED & JOINED',
+                              isPurchasesTab
+                                  ? 'PURCHASES & MEMBERSHIPS'
+                                  : 'ENROLLED COURSES',
                               style: AppTextStyles.caption(
                                 color: AppColors.primaryOrange,
                               ).copyWith(
@@ -288,7 +327,9 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'My Learning & Communities',
+                        isPurchasesTab
+                            ? 'My Purchases'
+                            : 'My Learning Courses',
                         style: AppTextStyles.headline2(
                           color: AppColors.white,
                         ).copyWith(
@@ -299,14 +340,16 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Access your enrolled courses and active learning communities.',
+                        isPurchasesTab
+                            ? 'Access communities, courses, and resources you purchased or joined.'
+                            : 'Access your enrolled courses, learning modules, and classroom resources.',
                         style: AppTextStyles.caption(
                           color: AppColors.creamWhite,
                         ).copyWith(fontSize: 13, height: 1.4),
                       ),
                       const SizedBox(height: 16),
 
-                      // Segmented Tab Toggle (Courses vs Communities)
+                      // Segmented Tab Toggle (Communities vs Courses)
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
@@ -320,12 +363,16 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                           children: [
                             Expanded(
                               child: _buildSegmentButton(
-                                label: 'Courses (${courses.length})',
-                                icon: HugeIconsStrokeRounded.book02,
-                                isSelected: _activeTab == PurchaseTab.courses,
+                                label: isPurchasesTab
+                                    ? 'Purchased (${purchasedOtherGroups.length})'
+                                    : 'Communities (${userGroups.length})',
+                                icon: isPurchasesTab
+                                    ? HugeIconsStrokeRounded.shoppingBag01
+                                    : HugeIconsStrokeRounded.userGroup,
+                                isSelected: _activeTab == PurchaseTab.groups,
                                 onTap: () {
                                   setState(() {
-                                    _activeTab = PurchaseTab.courses;
+                                    _activeTab = PurchaseTab.groups;
                                   });
                                 },
                               ),
@@ -333,12 +380,12 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                             const SizedBox(width: 6),
                             Expanded(
                               child: _buildSegmentButton(
-                                label: 'Communities (${userGroups.length})',
-                                icon: HugeIconsStrokeRounded.userGroup,
-                                isSelected: _activeTab == PurchaseTab.groups,
+                                label: 'Courses (${courses.length})',
+                                icon: HugeIconsStrokeRounded.book02,
+                                isSelected: _activeTab == PurchaseTab.courses,
                                 onTap: () {
                                   setState(() {
-                                    _activeTab = PurchaseTab.groups;
+                                    _activeTab = PurchaseTab.courses;
                                   });
                                 },
                               ),
@@ -369,7 +416,7 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                           decoration: InputDecoration(
                             hintText: _activeTab == PurchaseTab.courses
                                 ? 'Search your enrolled courses...'
-                                : 'Search your joined communities...',
+                                : 'Search your purchased communities...',
                             hintStyle: TextStyle(
                               color:
                                   AppColors.creamWhite.withValues(alpha: 0.6),
@@ -400,6 +447,43 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                       ),
                       const SizedBox(height: 12),
 
+                      // Filter chips for Communities tab
+                      if (_activeTab == PurchaseTab.groups &&
+                          userGroups.isNotEmpty) ...[
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildFilterChip(
+                                label: 'Purchased (${purchasedOtherGroups.length})',
+                                isSelected: _selectedGroupFilter == 'Purchased',
+                                onTap: () => setState(
+                                    () => _selectedGroupFilter = 'Purchased'),
+                              ),
+                              const SizedBox(width: 8),
+                              _buildFilterChip(
+                                label: 'All (${userGroups.length})',
+                                isSelected: _selectedGroupFilter == 'All',
+                                onTap: () => setState(
+                                    () => _selectedGroupFilter = 'All'),
+                              ),
+                              if (ownedGroups.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label:
+                                      'Created by Me (${ownedGroups.length})',
+                                  isSelected:
+                                      _selectedGroupFilter == 'Created by Me',
+                                  onTap: () => setState(() =>
+                                      _selectedGroupFilter = 'Created by Me'),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+
                       // Filter chips for Courses tab
                       if (_activeTab == PurchaseTab.courses &&
                           courses.isNotEmpty) ...[
@@ -407,11 +491,49 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              _buildFilterChip('All'),
+                              _buildFilterChip(
+                                label: 'All (${courses.length})',
+                                isSelected: _selectedCourseFilter == 'All',
+                                onTap: () => setState(
+                                    () => _selectedCourseFilter = 'All'),
+                              ),
+                              if (coursesFromPurchased.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label:
+                                      'From Purchased (${coursesFromPurchased.length})',
+                                  isSelected: _selectedCourseFilter ==
+                                      'Purchased Communities',
+                                  onTap: () => setState(() =>
+                                      _selectedCourseFilter =
+                                          'Purchased Communities'),
+                                ),
+                              ],
+                              if (coursesFromOwned.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label:
+                                      'From My Communities (${coursesFromOwned.length})',
+                                  isSelected: _selectedCourseFilter ==
+                                      'Created by Me',
+                                  onTap: () => setState(() =>
+                                      _selectedCourseFilter = 'Created by Me'),
+                                ),
+                              ],
                               const SizedBox(width: 8),
-                              _buildFilterChip('Paid'),
+                              _buildFilterChip(
+                                label: 'Paid',
+                                isSelected: _selectedCourseFilter == 'Paid',
+                                onTap: () => setState(
+                                    () => _selectedCourseFilter = 'Paid'),
+                              ),
                               const SizedBox(width: 8),
-                              _buildFilterChip('Free'),
+                              _buildFilterChip(
+                                label: 'Free',
+                                isSelected: _selectedCourseFilter == 'Free',
+                                onTap: () => setState(
+                                    () => _selectedCourseFilter = 'Free'),
+                              ),
                             ],
                           ),
                         ),
@@ -437,12 +559,17 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                   courses: filteredCourses,
                   hasAnyCourses: courses.isNotEmpty,
                   hasJoinedGroups: userGroups.isNotEmpty,
+                  currentUserId: currentUserId,
                 )
               else
                 _buildGroupsSection(
                   groups: filteredGroups,
                   hasAnyGroups: userGroups.isNotEmpty,
-                  currentUserId: user.id!,
+                  currentUserId: currentUserId,
+                  activeFilter: _selectedGroupFilter,
+                  purchasedCount: purchasedOtherGroups.length,
+                  ownedCount: ownedGroups.length,
+                  membershipsMap: membershipsMap,
                 ),
 
               // Bottom padding for scroll clearance
@@ -494,14 +621,13 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label) {
-    final isSelected = _selectedFilter == label;
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = label;
-        });
-      },
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -534,6 +660,7 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
     required List<PurchasedCourseItem> courses,
     required bool hasAnyCourses,
     required bool hasJoinedGroups,
+    required String currentUserId,
   }) {
     if (courses.isEmpty) {
       if (!hasJoinedGroups) {
@@ -596,7 +723,7 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
             final item = courses[index];
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _buildCourseCard(item),
+              child: _buildCourseCard(item, currentUserId),
             );
           },
           childCount: courses.length,
@@ -605,20 +732,24 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
     );
   }
 
-  Widget _buildCourseCard(PurchasedCourseItem item) {
+  Widget _buildCourseCard(PurchasedCourseItem item, String currentUserId) {
     final course = item.course;
     final group = item.group;
     final imageUrl = _resolveImageUrl(course.image,
         bucket: StorageBucket.courseMedia);
     final groupName = group?.name ?? 'Community Course';
     final moduleCount = course.moduleCount ?? 0;
+    final isPurchasedCommunity =
+        group != null && group.userId != null && group.userId != currentUserId;
 
     return Container(
       decoration: BoxDecoration(
         color: AppColors.darkBgContainer,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: isPurchasedCommunity
+              ? const Color(0xFF10B981).withValues(alpha: 0.25)
+              : Colors.white.withValues(alpha: 0.08),
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -691,15 +822,21 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                           color: Colors.black.withValues(alpha: 0.7),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: isPurchasedCommunity
+                                ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                                : Colors.white.withValues(alpha: 0.2),
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const HugeIcon(
-                              icon: HugeIconsStrokeRounded.userGroup,
-                              color: AppColors.primaryOrange,
+                            HugeIcon(
+                              icon: isPurchasedCommunity
+                                  ? HugeIconsStrokeRounded.shoppingBag01
+                                  : HugeIconsStrokeRounded.userGroup,
+                              color: isPurchasedCommunity
+                                  ? const Color(0xFF10B981)
+                                  : AppColors.primaryOrange,
                               size: 13,
                             ),
                             const SizedBox(width: 5),
@@ -729,22 +866,35 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.green.withValues(alpha: 0.2),
+                          color: isPurchasedCommunity
+                              ? const Color(0xFF10B981).withValues(alpha: 0.2)
+                              : AppColors.green.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: AppColors.green,
+                            color: isPurchasedCommunity
+                                ? const Color(0xFF10B981)
+                                : AppColors.green,
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.check_circle,
-                                color: AppColors.green, size: 12),
-                            SizedBox(width: 4),
+                          children: [
+                            Icon(
+                              isPurchasedCommunity
+                                  ? Icons.verified_rounded
+                                  : Icons.check_circle,
+                              color: isPurchasedCommunity
+                                  ? const Color(0xFF10B981)
+                                  : AppColors.green,
+                              size: 12,
+                            ),
+                            const SizedBox(width: 4),
                             Text(
-                              'ENROLLED',
+                              isPurchasedCommunity ? 'PURCHASED' : 'ENROLLED',
                               style: TextStyle(
-                                color: AppColors.green,
+                                color: isPurchasedCommunity
+                                    ? const Color(0xFF10B981)
+                                    : AppColors.green,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -914,8 +1064,64 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
     required List<GroupModel> groups,
     required bool hasAnyGroups,
     required String currentUserId,
+    required String activeFilter,
+    required int purchasedCount,
+    required int ownedCount,
+    required Map<String, MemberModel> membershipsMap,
   }) {
     if (groups.isEmpty) {
+      if (_searchQuery.isNotEmpty) {
+        return SliverFillRemaining(
+          hasScrollBody: false,
+          child: _buildEmptyState(
+            icon: HugeIconsStrokeRounded.search01,
+            title: 'No Matching Communities',
+            subtitle:
+                'No communities match "$_searchQuery". Try searching with different keywords.',
+            actionLabel: 'Clear Search',
+            onAction: () {
+              _searchController.clear();
+              setState(() {
+                _searchQuery = '';
+              });
+            },
+          ),
+        );
+      }
+
+      if (activeFilter == 'Purchased' && purchasedCount == 0) {
+        return SliverFillRemaining(
+          hasScrollBody: false,
+          child: _buildEmptyState(
+            icon: HugeIconsStrokeRounded.shoppingBag01,
+            title: 'No Purchased Communities Yet',
+            subtitle:
+                'You haven\'t purchased or joined any creator communities yet. Explore verified learning communities on Larnity to unlock exclusive masterclasses, discussion rooms, and resources.',
+            actionLabel: 'Explore Communities',
+            onAction: () => context.goNamed(Routes.explore),
+            secondaryActionLabel:
+                ownedCount > 0 ? 'View Created by Me ($ownedCount)' : null,
+            onSecondaryAction: ownedCount > 0
+                ? () => setState(() => _selectedGroupFilter = 'Created by Me')
+                : null,
+          ),
+        );
+      }
+
+      if (activeFilter == 'Created by Me' && ownedCount == 0) {
+        return SliverFillRemaining(
+          hasScrollBody: false,
+          child: _buildEmptyState(
+            icon: HugeIconsStrokeRounded.userGroup,
+            title: 'No Created Communities',
+            subtitle:
+                'You haven\'t created any communities yet. Start your own learning community on Larnity to share courses and host live sessions!',
+            actionLabel: 'Create Community',
+            onAction: () => context.pushNamed(Routes.package),
+          ),
+        );
+      }
+
       if (!hasAnyGroups) {
         return SliverFillRemaining(
           hasScrollBody: false,
@@ -929,23 +1135,6 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
           ),
         );
       }
-
-      return SliverFillRemaining(
-        hasScrollBody: false,
-        child: _buildEmptyState(
-          icon: HugeIconsStrokeRounded.search01,
-          title: 'No Matching Communities',
-          subtitle:
-              'No joined communities match "$_searchQuery". Try a different search keyword.',
-          actionLabel: 'Clear Search',
-          onAction: () {
-            _searchController.clear();
-            setState(() {
-              _searchQuery = '';
-            });
-          },
-        ),
-      );
     }
 
     return SliverPadding(
@@ -954,9 +1143,14 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             final group = groups[index];
+            final member = membershipsMap[group.id];
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _buildGroupCard(group, currentUserId),
+              child: _buildGroupCard(
+                group: group,
+                currentUserId: currentUserId,
+                member: member,
+              ),
             );
           },
           childCount: groups.length,
@@ -965,7 +1159,11 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
     );
   }
 
-  Widget _buildGroupCard(GroupModel group, String currentUserId) {
+  Widget _buildGroupCard({
+    required GroupModel group,
+    required String currentUserId,
+    required MemberModel? member,
+  }) {
     final bannerUrl = _resolveImageUrl(group.thumbnail,
             bucket: StorageBucket.groupImages) ??
         _resolveImageUrl(group.icon, bucket: StorageBucket.groupImages);
@@ -977,12 +1175,27 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
     final memberCount = group.memberCount ?? 0;
     final category = group.category ?? 'Community';
 
+    // Format plan info
+    final rawPlan = member?.planType?.trim();
+    final String badgeText;
+    if (isOwner) {
+      badgeText = '👑 CREATOR';
+    } else if (rawPlan != null &&
+        rawPlan.isNotEmpty &&
+        rawPlan.toUpperCase() != 'MEMBER') {
+      badgeText = '✓ ${rawPlan.toUpperCase()} ACCESS';
+    } else {
+      badgeText = '✓ PURCHASED';
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.darkBgContainer,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: isOwner
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFF10B981).withValues(alpha: 0.25),
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -997,7 +1210,7 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
             children: [
               // Banner
               SizedBox(
-                height: 120,
+                height: 125,
                 width: double.infinity,
                 child: Stack(
                   fit: StackFit.expand,
@@ -1037,40 +1250,57 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withValues(alpha: 0.6),
+                              Colors.black.withValues(alpha: 0.65),
                             ],
                           ),
                         ),
                       ),
                     ),
 
-                    // Role Badge (Owner vs Member)
+                    // Role / Purchased Badge (Owner vs Purchased)
                     Positioned(
                       top: 12,
                       right: 12,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 9, vertical: 4),
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: isOwner
-                              ? AppColors.primaryOrange.withValues(alpha: 0.2)
-                              : AppColors.skyBlue.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color:
-                                isOwner ? AppColors.primaryOrange : AppColors.skyBlue,
-                          ),
+                              ? AppColors.primaryOrange.withValues(alpha: 0.95)
+                              : const Color(0xFF10B981).withValues(alpha: 0.95),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (isOwner
+                                      ? AppColors.primaryOrange
+                                      : const Color(0xFF10B981))
+                                  .withValues(alpha: 0.4),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          isOwner ? 'CREATOR' : 'JOINED',
-                          style: TextStyle(
-                            color: isOwner
-                                ? AppColors.primaryOrange
-                                : AppColors.skyBlue,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            HugeIcon(
+                              icon: isOwner
+                                  ? HugeIconsStrokeRounded.crown
+                                  : HugeIconsStrokeRounded.checkmarkCircle02,
+                              color: isOwner ? Colors.black : Colors.white,
+                              size: 13,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              badgeText,
+                              style: TextStyle(
+                                color: isOwner ? Colors.black : Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -1088,13 +1318,18 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                       children: [
                         // Group Icon
                         Container(
-                          width: 44,
-                          height: 44,
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(
                             color: AppColors.darkBg,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
+                              color: isOwner
+                                  ? AppColors.primaryOrange
+                                      .withValues(alpha: 0.5)
+                                  : const Color(0xFF10B981)
+                                      .withValues(alpha: 0.5),
+                              width: 1.5,
                             ),
                           ),
                           clipBehavior: Clip.antiAlias,
@@ -1102,16 +1337,18 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                               ? Image.network(
                                   iconUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => const Icon(
+                                  errorBuilder:
+                                      (context, error, stackTrace) =>
+                                          const Icon(
                                     Icons.group,
                                     color: AppColors.primaryOrange,
-                                    size: 22,
+                                    size: 24,
                                   ),
                                 )
                               : const Icon(
                                   Icons.group,
                                   color: AppColors.primaryOrange,
-                                  size: 22,
+                                  size: 24,
                                 ),
                         ),
                         const SizedBox(width: 12),
@@ -1131,17 +1368,44 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 3),
-                              Text(
-                                category,
-                                style: AppTextStyles.caption(
-                                  color: AppColors.primaryOrange,
-                                ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                              Row(
+                                children: [
+                                  Text(
+                                    category,
+                                    style: AppTextStyles.caption(
+                                      color: AppColors.primaryOrange,
+                                    ).copyWith(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                  if (!isOwner) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF10B981)
+                                            .withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'Purchased Access',
+                                        style: TextStyle(
+                                          color: Color(0xFF10B981),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
+
                     if (group.description != null &&
                         group.description!.isNotEmpty) ...[
                       const SizedBox(height: 10),
@@ -1154,6 +1418,21 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
+
+                    // Community parts preview pills
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _buildRoomPreviewChip('💬 Discussion'),
+                        _buildRoomPreviewChip('📚 Classroom'),
+                        _buildRoomPreviewChip('📅 Events'),
+                        _buildRoomPreviewChip('🎯 Challenges'),
+                        _buildRoomPreviewChip('🛍️ Products'),
+                      ],
+                    ),
+
                     const SizedBox(height: 14),
                     const Divider(color: AppColors.borderBrown, height: 1),
                     const SizedBox(height: 12),
@@ -1190,30 +1469,59 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
                             ],
                           ),
                         ),
+                        if (member?.planPrice != null &&
+                            member!.planPrice! > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981)
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: const Color(0xFF10B981)
+                                    .withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              '₹${member.planPrice!.toInt()} Paid',
+                              style: const TextStyle(
+                                color: Color(0xFF10B981),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                         const Spacer(),
 
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryOrange,
+                            color: isOwner
+                                ? AppColors.primaryOrange
+                                : const Color(0xFF10B981),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
+                            children: [
                               Text(
-                                'Enter Room',
+                                isOwner
+                                    ? 'Manage Rooms'
+                                    : 'Enter Community Rooms',
                                 style: TextStyle(
-                                  color: Colors.black,
+                                  color: isOwner ? Colors.black : Colors.white,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              SizedBox(width: 4),
+                              const SizedBox(width: 4),
                               Icon(
                                 Icons.arrow_forward_rounded,
-                                color: Colors.black,
+                                color: isOwner ? Colors.black : Colors.white,
                                 size: 14,
                               ),
                             ],
@@ -1226,6 +1534,27 @@ class _PurchaseCourseScreenState extends ConsumerState<PurchaseCourseScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoomPreviewChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: AppColors.creamWhite.withValues(alpha: 0.8),
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

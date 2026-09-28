@@ -4,6 +4,7 @@ import 'package:larnity/src/core/error/failures.dart';
 import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
 import 'package:larnity/src/core/service/supabase/src/supabase_table.dart';
 import 'package:larnity/src/core/utils/logger.dart';
+import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/features/group/data/models/member_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -291,4 +292,47 @@ class MemberDataSource {
       return Left(Failure(e.toString()));
     }
   }
+
+  /// Get all memberships for a user across all groups.
+  Future<Either<Failure, List<MemberModel>>> getMembershipsByUser({
+    required String userId,
+  }) async {
+    try {
+      final response = await supabaseClient
+          .from(SupabaseTable.members)
+          .select()
+          .eq('userId', userId)
+          .order('created_at', ascending: false);
+
+      final members = (response as List)
+          .map((e) => MemberModel.fromMap(e as Map<String, dynamic>))
+          .toList();
+
+      Log.info('Fetched ${members.length} memberships for user $userId');
+      return Right(members);
+    } on PostgrestException catch (e) {
+      Log.error('getMembershipsByUser error: ${e.message}');
+      return Left(Failure(e.message));
+    } catch (e) {
+      Log.error('getMembershipsByUser error: $e');
+      return Left(Failure(e.toString()));
+    }
+  }
 }
+
+/// Provider that caches and exposes the current user's membership records mapped by groupId.
+final userMembershipsProvider =
+    FutureProvider.autoDispose<Map<String, MemberModel>>((ref) async {
+  final currentUserId = ref.watch(authProvider).user?.id ??
+      ref.watch(supabaseClientProvider).auth.currentUser?.id;
+  if (currentUserId == null || currentUserId.isEmpty) {
+    return {};
+  }
+
+  final dataSource = ref.watch(memberDataSourceProvider);
+  final res = await dataSource.getMembershipsByUser(userId: currentUserId);
+  return res.fold(
+    (failure) => {},
+    (members) => {for (var m in members) m.groupId: m},
+  );
+});
