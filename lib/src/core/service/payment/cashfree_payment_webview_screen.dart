@@ -194,7 +194,8 @@ class _CashfreePaymentWebViewScreenState
         // Enroll member into Supabase
         await ref.read(memberDataSourceProvider).addOrUpdateMember(member: member);
 
-        // Refresh user's groups
+        // Set selected group & refresh user's groups
+        ref.read(groupProvider.notifier).setSelectedGroup(widget.group!);
         ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
 
         if (!mounted) return;
@@ -203,13 +204,10 @@ class _CashfreePaymentWebViewScreenState
         await Future.delayed(const Duration(milliseconds: 1500));
         if (!mounted) return;
 
-        Navigator.of(context, rootNavigator: true).pop(true); // Close webview screen
         showSuccessToast(
           content: "🎉 Welcome to ${widget.group!.name}! Membership activated.",
         );
-
-        ref.read(groupProvider.notifier).setSelectedGroup(widget.group!);
-        context.pushNamed(Routes.group);
+        Navigator.of(context, rootNavigator: true).pop(true); // Close webview screen
         return;
       }
     }

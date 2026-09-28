@@ -55,8 +55,8 @@ class StylishBottomNavBar extends StatelessWidget {
                   Expanded(
                     flex: currentIndex == 1 ? 3 : 2,
                     child: _NavBarItem(
-                      icon: HugeIconsStrokeRounded.book02,
-                      label: "Courses",
+                      icon: HugeIconsStrokeRounded.shoppingBag01,
+                      label: "Purchases",
                       isSelected: currentIndex == 1,
                       onTap: () => onTap(1),
                     ),

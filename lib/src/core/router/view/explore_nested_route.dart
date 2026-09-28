@@ -190,13 +190,13 @@ class ExploreNestedRoute extends ConsumerWidget {
             ),
             ListTile(
               leading: HugeIcon(
-                icon: HugeIconsStrokeRounded.calendar01,
+                icon: HugeIconsStrokeRounded.shoppingBag01,
                 color: AppColors.white,
               ),
-              title: const Text('My Learning'),
+              title: const Text('My Purchases'),
               onTap: () {
                 Navigator.pop(context);
-                _goBranch(context, ref, 4);
+                _goBranch(context, ref, 1);
               },
             ),
             ListTile(

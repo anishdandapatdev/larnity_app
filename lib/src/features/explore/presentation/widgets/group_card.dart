@@ -12,6 +12,9 @@ import 'package:larnity/src/features/group/presentation/provider/group_provider.
 import 'package:go_router/go_router.dart';
 import 'package:larnity/src/core/router/router.dart';
 
+import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
+
 class GroupCard extends ConsumerWidget {
   final GroupModel? group;
 
@@ -70,12 +73,21 @@ class GroupCard extends ConsumerWidget {
     final iconUrl = _resolveImageUrl(ref, group?.icon) ??
         _resolveImageUrl(ref, group?.thumbnail);
 
+    final currentUserId = ref.watch(authProvider).user?.id ??
+        ref.watch(supabaseClientProvider).auth.currentUser?.id;
+    final groupState = ref.watch(groupProvider);
+    final isOwner = group?.userId != null && group?.userId == currentUserId;
+    final isMember =
+        groupState.groups?.any((g) => g.id == group?.id) ?? false;
+    final isJoined = isOwner || isMember;
+
     final mPrice = group?.monthlyPrice ?? 0;
     final yPrice = group?.yearlyPrice ?? 0;
     final lPrice = group?.lifetimePrice ?? 0;
+    final isFree = mPrice <= 0 && yPrice <= 0 && lPrice <= 0;
 
     final String price;
-    if (mPrice <= 0 && yPrice <= 0 && lPrice <= 0) {
+    if (isFree) {
       price = "Free";
     } else if (mPrice > 0) {
       price = "₹$mPrice/month";
@@ -91,7 +103,13 @@ class GroupCard extends ConsumerWidget {
       onTap: () {
         if (group != null) {
           ref.read(groupProvider.notifier).setSelectedGroup(group);
-          context.pushNamed(Routes.groupDetails, extra: group);
+          if (isJoined) {
+            // Already a member/owner: go straight to the community rooms dashboard
+            context.pushNamed(Routes.group);
+          } else {
+            // Not yet joined: go to details/join page
+            context.pushNamed(Routes.groupDetails, extra: group);
+          }
         }
       },
       child: Card(
@@ -104,38 +122,93 @@ class GroupCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Group image or banner
-            ClipRRect(
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(AppSizes.xs),
-              ),
-              child: SizedBox(
-                height: 140,
-                width: double.infinity,
-                child: bannerUrl != null
-                    ? Image.network(
-                        bannerUrl,
-                        width: double.infinity,
-                        height: 140,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, progress) {
-                          if (progress == null) return child;
-                          return Container(
-                            color: AppColors.darkBg,
-                            child: const Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              ),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(AppSizes.xs),
+                  ),
+                  child: SizedBox(
+                    height: 140,
+                    width: double.infinity,
+                    child: bannerUrl != null
+                        ? Image.network(
+                            bannerUrl,
+                            width: double.infinity,
+                            height: 140,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                color: AppColors.darkBg,
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child:
+                                        CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildPlaceholderBanner(groupName),
+                          )
+                        : _buildPlaceholderBanner(groupName),
+                  ),
+                ),
+                if (isJoined)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isOwner
+                            ? AppColors.primaryOrange.withValues(alpha: 0.95)
+                            : const Color(0xFF10B981).withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isOwner
+                                    ? AppColors.primaryOrange
+                                    : const Color(0xFF10B981))
+                                .withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          HugeIcon(
+                            icon: isOwner
+                                ? HugeIconsStrokeRounded.crown
+                                : HugeIconsStrokeRounded.checkmarkCircle02,
+                            color: isOwner ? Colors.black : Colors.white,
+                            size: 13,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            isOwner
+                                ? "OWNER"
+                                : (isFree ? "JOINED" : "PURCHASED"),
+                            style: TextStyle(
+                              color: isOwner ? Colors.black : Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.6,
                             ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) =>
-                            _buildPlaceholderBanner(groupName),
-                      )
-                    : _buildPlaceholderBanner(groupName),
-              ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
             // Group details
             Padding(
@@ -221,12 +294,39 @@ class GroupCard extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      Text(
-                        price,
-                        style: AppTextStyles.caption2(
-                          color: AppColors.primaryOrange,
+                      if (isJoined)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            HugeIcon(
+                              icon: isOwner
+                                  ? HugeIconsStrokeRounded.crown
+                                  : HugeIconsStrokeRounded.checkmarkCircle02,
+                              color: isOwner
+                                  ? AppColors.primaryOrange
+                                  : const Color(0xFF10B981),
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isOwner
+                                  ? "Owner"
+                                  : (isFree ? "Joined" : "Purchased"),
+                              style: AppTextStyles.caption2(
+                                color: isOwner
+                                    ? AppColors.primaryOrange
+                                    : const Color(0xFF10B981),
+                              ).copyWith(fontWeight: AppFontWeights.bold),
+                            ),
+                          ],
+                        )
+                      else
+                        Text(
+                          price,
+                          style: AppTextStyles.caption2(
+                            color: AppColors.primaryOrange,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ],

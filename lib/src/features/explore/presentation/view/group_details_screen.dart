@@ -21,9 +21,22 @@ import 'package:larnity/src/features/group/data/models/member_model.dart';
 import 'package:larnity/src/features/group/presentation/provider/group_provider.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 
-class GroupDetailsScreen extends ConsumerWidget {
+class GroupDetailsScreen extends ConsumerStatefulWidget {
   final GroupModel? group;
   const GroupDetailsScreen({super.key, this.group});
+
+  @override
+  ConsumerState<GroupDetailsScreen> createState() => _GroupDetailsScreenState();
+}
+
+class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+    });
+  }
 
   String? _resolveImageUrl(WidgetRef ref, String? rawUrl) {
     if (rawUrl == null || rawUrl.trim().isEmpty) return null;
@@ -145,14 +158,17 @@ class GroupDetailsScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final groupState = ref.watch(groupProvider);
-    final selectedGroup = group ?? groupState.group;
-    final currentUserId = ref.watch(authProvider).user?.id;
-    final isMemberOrOwner = selectedGroup != null && (
-        (selectedGroup.userId != null && selectedGroup.userId == currentUserId) ||
-        (groupState.groups?.any((g) => g.id == selectedGroup.id) ?? false)
-    );
+    final selectedGroup = widget.group ?? groupState.group;
+    final currentUserId = ref.watch(authProvider).user?.id ??
+        ref.watch(supabaseClientProvider).auth.currentUser?.id;
+    final isOwner = selectedGroup != null &&
+        selectedGroup.userId != null &&
+        selectedGroup.userId == currentUserId;
+    final isMember = selectedGroup != null &&
+        (groupState.groups?.any((g) => g.id == selectedGroup.id) ?? false);
+    final isMemberOrOwner = isOwner || isMember;
 
     if (selectedGroup == null) {
       if (groupState.isLoading) {
@@ -406,31 +422,53 @@ class GroupDetailsScreen extends ConsumerWidget {
                         ),
                       ),
 
-                      // Price Badge
+                      // Price / Membership Badge
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: isFree
-                              ? AppColors.primaryOrange.withValues(alpha: 0.15)
-                              : AppColors.darkBgContainer,
+                          color: canEnterDirectly
+                              ? (isOwner
+                                  ? AppColors.primaryOrange.withValues(alpha: 0.15)
+                                  : const Color(0xFF10B981).withValues(alpha: 0.15))
+                              : (isFree
+                                  ? AppColors.primaryOrange.withValues(alpha: 0.15)
+                                  : AppColors.darkBgContainer),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: AppColors.primaryOrange.withValues(alpha: 0.5),
+                            color: canEnterDirectly
+                                ? (isOwner
+                                    ? AppColors.primaryOrange
+                                    : const Color(0xFF10B981))
+                                : AppColors.primaryOrange.withValues(alpha: 0.5),
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const HugeIcon(
-                              icon: HugeIconsStrokeRounded.tag01,
-                              color: AppColors.primaryOrange,
+                            HugeIcon(
+                              icon: canEnterDirectly
+                                  ? (isOwner
+                                      ? HugeIconsStrokeRounded.crown
+                                      : HugeIconsStrokeRounded.checkmarkCircle02)
+                                  : HugeIconsStrokeRounded.tag01,
+                              color: canEnterDirectly
+                                  ? (isOwner
+                                      ? AppColors.primaryOrange
+                                      : const Color(0xFF10B981))
+                                  : AppColors.primaryOrange,
                               size: 14,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              priceLabel,
+                              canEnterDirectly
+                                  ? (isOwner ? "Owner" : "Purchased / Active")
+                                  : priceLabel,
                               style: AppTextStyles.overLine(
-                                color: AppColors.primaryOrange,
+                                color: canEnterDirectly
+                                    ? (isOwner
+                                        ? AppColors.primaryOrange
+                                        : const Color(0xFF10B981))
+                                    : AppColors.primaryOrange,
                               ).copyWith(fontWeight: AppFontWeights.bold),
                             ),
                           ],
@@ -459,6 +497,67 @@ class GroupDetailsScreen extends ConsumerWidget {
 
                   AppSizes.md.ph,
 
+                  // Active Membership Banner if already joined or purchased
+                  if (canEnterDirectly) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.check_circle_rounded,
+                              color: Color(0xFF10B981),
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isOwner
+                                      ? "You Own This Community"
+                                      : "Purchased & Active Member",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "You have unlocked access to all rooms, chats, courses, and resources.",
+                                  style: TextStyle(
+                                    color: AppColors.creamWhite.withValues(alpha: 0.8),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AppSizes.xs.ph,
+                  ],
+
                   // Action Button
                   if (canEnterDirectly)
                     AppButton(
@@ -466,7 +565,7 @@ class GroupDetailsScreen extends ConsumerWidget {
                         ref.read(groupProvider.notifier).setSelectedGroup(selectedGroup);
                         context.pushNamed(Routes.group);
                       },
-                      label: "Enter Community",
+                      label: "Enter Community Rooms →",
                       labelStyle: AppTextStyles.bodyText2(color: AppColors.black).copyWith(
                         fontWeight: AppFontWeights.bold,
                       ),
@@ -1385,7 +1484,7 @@ void _showPaymentSheet(
                                   if (ctx.mounted) Navigator.of(ctx).pop();
 
                                   if (context.mounted) {
-                                    Navigator.of(context, rootNavigator: true).push(
+                                    final paymentSuccess = await Navigator.of(context, rootNavigator: true).push<bool>(
                                       MaterialPageRoute(
                                         builder: (_) => CashfreePaymentWebViewScreen(
                                           group: group,
@@ -1396,6 +1495,12 @@ void _showPaymentSheet(
                                         ),
                                       ),
                                     );
+
+                                    if (paymentSuccess == true && context.mounted) {
+                                      ref.read(groupProvider.notifier).setSelectedGroup(group);
+                                      ref.read(groupProvider.notifier).refreshGroupsForCurrentUser();
+                                      context.pushReplacementNamed(Routes.group);
+                                    }
                                   }
                                 },
                               );
