@@ -111,7 +111,7 @@ class _ExploreGroupsWidgetState extends ConsumerState<ExploreGroupsWidget> {
                   if (hasActivePackage && hasCreatedGroups) {
                     context.pushNamed(Routes.packageSubscription);
                   } else {
-                    context.pushNamed(Routes.package);
+                    context.goNamed(Routes.createGroup);
                   }
                 },
                 radius: 32,
