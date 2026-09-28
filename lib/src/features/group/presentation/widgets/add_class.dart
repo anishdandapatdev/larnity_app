@@ -280,25 +280,41 @@ class _AddClassState extends ConsumerState<AddClass> {
                                       });
                                     },
                                     button: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: AppSizes.xxs, horizontal: AppSizes.xxs),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: AppSizes.xxs,
+                                        horizontal: 8,
+                                      ),
                                       decoration: BoxDecoration(
-                                        border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.5)),
+                                        border: Border.all(
+                                          color: AppColors.skyBlue.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                        ),
                                         borderRadius: BorderRadius.circular(
                                           AppSizes.xxxs,
                                         ),
                                       ),
                                       child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            _selectedDate == null 
-                                              ? "mm/dd/yyyy" 
-                                              : "${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.year}",
-                                            style: const TextStyle(color: AppColors.white),
+                                          Expanded(
+                                            child: Text(
+                                              _selectedDate == null
+                                                  ? "mm/dd/yyyy"
+                                                  : "${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.year}",
+                                              style: const TextStyle(
+                                                color: AppColors.white,
+                                                fontSize: 13,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
+                                          const SizedBox(width: 4),
                                           const HugeIcon(
-                                            icon: HugeIconsStrokeRounded.calendar03,
+                                            size: 18,
+                                            icon:
+                                                HugeIconsStrokeRounded
+                                                    .calendar03,
                                             color: AppColors.white,
                                           ),
                                         ],
@@ -334,25 +350,40 @@ class _AddClassState extends ConsumerState<AddClass> {
                                       });
                                     },
                                     button: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: AppSizes.xxs, horizontal: AppSizes.xxs),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: AppSizes.xxs,
+                                        horizontal: 8,
+                                      ),
                                       decoration: BoxDecoration(
-                                        border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.5)),
+                                        border: Border.all(
+                                          color: AppColors.skyBlue.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                        ),
                                         borderRadius: BorderRadius.circular(
                                           AppSizes.xxxs,
                                         ),
                                       ),
                                       child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            _selectedTime == null 
-                                              ? "--:--:--" 
-                                              : "${_selectedTime!.hourOfPeriod == 0 ? 12 : _selectedTime!.hourOfPeriod}:${_selectedTime!.minute.toString().padLeft(2, '0')} ${_selectedTime!.period == DayPeriod.am ? 'AM' : 'PM'}",
-                                            style: const TextStyle(color: AppColors.white),
+                                          Expanded(
+                                            child: Text(
+                                              _selectedTime == null
+                                                  ? "--:--"
+                                                  : "${_selectedTime!.hourOfPeriod == 0 ? 12 : _selectedTime!.hourOfPeriod}:${_selectedTime!.minute.toString().padLeft(2, '0')} ${_selectedTime!.period == DayPeriod.am ? 'AM' : 'PM'}",
+                                              style: const TextStyle(
+                                                color: AppColors.white,
+                                                fontSize: 13,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
+                                          const SizedBox(width: 4),
                                           const HugeIcon(
-                                            icon: HugeIconsStrokeRounded.clock01,
+                                            size: 18,
+                                            icon:
+                                                HugeIconsStrokeRounded.clock01,
                                             color: AppColors.white,
                                           ),
                                         ],

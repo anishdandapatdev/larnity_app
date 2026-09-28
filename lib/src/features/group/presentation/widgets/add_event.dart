@@ -293,7 +293,7 @@ class _AddEventState extends ConsumerState<AddEvent> {
                                     button: Container(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: AppSizes.xxs,
-                                        horizontal: AppSizes.xxs,
+                                        horizontal: 8,
                                       ),
                                       decoration: BoxDecoration(
                                         border: Border.all(
@@ -306,23 +306,28 @@ class _AddEventState extends ConsumerState<AddEvent> {
                                         ),
                                       ),
                                       child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            _selectedDate == null
-                                                ? "mm/dd/yyyy"
-                                                : "${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.year}",
-                                            style: const TextStyle(
-                                              color: AppColors.white,
+                                          Expanded(
+                                            child: Text(
+                                              _selectedDate == null
+                                                  ? "mm/dd/yyyy"
+                                                  : "${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.year}",
+                                              style: const TextStyle(
+                                                color: AppColors.white,
+                                                fontSize: 13,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
-                                          // const HugeIcon(
-                                          //   size: 20,
-                                          //   icon: HugeIconsStrokeRounded
-                                          //       .calendar03,
-                                          //   color: AppColors.white,
-                                          // ),
+                                          const SizedBox(width: 4),
+                                          const HugeIcon(
+                                            size: 18,
+                                            icon:
+                                                HugeIconsStrokeRounded
+                                                    .calendar03,
+                                            color: AppColors.white,
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -358,7 +363,7 @@ class _AddEventState extends ConsumerState<AddEvent> {
                                     button: Container(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: AppSizes.xxs,
-                                        horizontal: AppSizes.xxs,
+                                        horizontal: 8,
                                       ),
                                       decoration: BoxDecoration(
                                         border: Border.all(
@@ -371,18 +376,23 @@ class _AddEventState extends ConsumerState<AddEvent> {
                                         ),
                                       ),
                                       child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            _selectedTime == null
-                                                ? "--:--:--"
-                                                : "${_selectedTime!.hourOfPeriod == 0 ? 12 : _selectedTime!.hourOfPeriod}:${_selectedTime!.minute.toString().padLeft(2, '0')} ${_selectedTime!.period == DayPeriod.am ? 'AM' : 'PM'}",
-                                            style: const TextStyle(
-                                              color: AppColors.white,
+                                          Expanded(
+                                            child: Text(
+                                              _selectedTime == null
+                                                  ? "--:--"
+                                                  : "${_selectedTime!.hourOfPeriod == 0 ? 12 : _selectedTime!.hourOfPeriod}:${_selectedTime!.minute.toString().padLeft(2, '0')} ${_selectedTime!.period == DayPeriod.am ? 'AM' : 'PM'}",
+                                              style: const TextStyle(
+                                                color: AppColors.white,
+                                                fontSize: 13,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
+                                          const SizedBox(width: 4),
                                           const HugeIcon(
+                                            size: 18,
                                             icon:
                                                 HugeIconsStrokeRounded.clock01,
                                             color: AppColors.white,
