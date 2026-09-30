@@ -36,6 +36,9 @@ class AuthScreen extends ConsumerWidget {
         // Only show when the message is newly set (first-time signup only)
         showInfoToast(content: newState.signUpSuccessMessage!);
       }
+      if (newState.isAuthenticated && previousState?.isAuthenticated != true) {
+        context.goNamed(Routes.explore);
+      }
     });
     return Scaffold(
       body: SafeArea(
@@ -326,6 +329,8 @@ class AuthScreen extends ConsumerWidget {
                                 width: double.infinity,
                                 height: 50,
                                 child: AppButton(
+                                  isLoading:
+                                      authState.loginState == AsyncState.loading,
                                   onPressed:
                                       authState.loginState == AsyncState.loading
                                       ? null

@@ -1,34 +1,61 @@
-# Enable Google Sign-In for Larnity Mobile App
+# Enable Google Sign-In for Larnity-test App
 
-### Context
-Google Sign-In is already fully configured and working on the **web app** (`dev.larnity.com`). 
-
-To allow the **Flutter mobile app** to use the exact same Google authentication flow via deep linking, there is **only ONE step** required in the Supabase Dashboard. 
-
-> ⚠️ **Note**: Do **NOT** change or recreate Google Cloud Console credentials or the existing Google provider settings in Supabase. Everything is already working for the web.
+### Active Supabase Project
+- **Project Name:** Larnity-test
+- **Project URL:** `https://lppxrbkgnajekulxpuce.supabase.co`
+- **Project Ref:** `lppxrbkgnajekulxpuce`
 
 ---
 
-## The Only Step Required: Add Mobile Deep Link to Supabase
+## Step 1: Add Redirect URLs in Supabase Dashboard
 
-1. Open the **[Supabase Dashboard](https://supabase.com/dashboard/project/qtbaoqrrxupwkyofcjqp)**.
-2. In the left sidebar, navigate to:
-   **Authentication** ➔ **URL Configuration**.
-3. Scroll down to the **Redirect URLs** table.
-4. Click the green **`Add URL`** button and add:
-   ```
+1. Open your **Larnity-test** Supabase URL Configuration:
+   👉 **[https://supabase.com/dashboard/project/lppxrbkgnajekulxpuce/auth/url-configuration](https://supabase.com/dashboard/project/lppxrbkgnajekulxpuce/auth/url-configuration)**
+
+2. Scroll to the **Redirect URLs** section.
+
+3. Click **`Add URL`** and add each of these URLs:
+   ```text
    io.supabase.larnity://login-callback
-   ```
-5. *(Recommended fallback)* Click **`Add URL`** again and add:
-   ```
+   io.supabase.larnity://**
    com.example.larnity://login-callback
+   com.example.larnity://**
    ```
-6. Click **Save**.
+
+4. Click **Save** at the bottom of the page.
 
 ---
 
-### That's it!
-Once this URL is saved in Supabase:
-- When a mobile user taps **Sign in with Google**, Supabase opens Google login in the browser.
-- After the user confirms their account, Supabase safely redirects back to `io.supabase.larnity://login-callback`.
-- The Android / iOS app captures the deep link, logs the user in, and navigates them straight to the app home screen.
+## Step 2: Verify Google Provider Settings
+
+1. Open the Auth Providers page:
+   👉 **[https://supabase.com/dashboard/project/lppxrbkgnajekulxpuce/auth/providers](https://supabase.com/dashboard/project/lppxrbkgnajekulxpuce/auth/providers)**
+
+2. Click **Google**:
+   - Ensure the toggle **"Enable Sign in with Google"** is **ON**.
+   - Note the **Authorized redirect URI**:
+     ```text
+     https://lppxrbkgnajekulxpuce.supabase.co/auth/v1/callback
+     ```
+   - In your Google Cloud Console (Credentials ➔ OAuth 2.0 Client ID), make sure that exact callback URL is listed under **Authorized redirect URIs**.
+
+---
+
+## Step 3: IMPORTANT — Rebuild the Mobile App
+
+Because we updated native settings in `android/app/src/main/AndroidManifest.xml`:
+- **Hot reload (`r`) or hot restart (`R`) will NOT apply Android manifest changes.**
+- You **must stop the app** (`q` in terminal) and run:
+  ```bash
+  flutter run
+  ```
+  so Android installs the new `singleTask` launchMode and deep-link filters.
+
+---
+
+## What was fixed in the Codebase:
+1. **`AndroidManifest.xml`**: Set `launchMode="singleTask"` and removed empty `taskAffinity` so Android correctly brings the app forward when returning from Google in the browser.
+2. **`auth_datasource.dart`**: Added safe fallback to session user metadata so new Google users are never kicked out if the `profiles` table row creation encounters any lag or RLS restrictions.
+3. **`auth_provider.dart`**: Prevented resetting `isAuthenticated` to false when a valid Supabase session is active.
+4. **`auth_screen.dart`**: Added a loading indicator to the Google button and an automatic navigation listener to `/explore` on sign-in.
+5. **`signup.dart` & `signin.dart`**: Replaced dead dummy callbacks (`onPressed: () {}`) with `authNotifier.signInWithGoogle()`.

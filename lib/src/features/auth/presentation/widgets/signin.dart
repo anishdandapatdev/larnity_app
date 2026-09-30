@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
+import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/features/auth/presentation/widgets/signup.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends ConsumerWidget {
   LoginScreen({super.key});
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -162,7 +164,7 @@ class LoginScreen extends StatelessWidget {
                 const SizedBox(height: 40),
                 _buildDivider(),
                 const SizedBox(height: 30),
-                _buildGoogleButton(),
+                _buildGoogleButton(ref),
                 const SizedBox(height: 40),
               ],
             ),
@@ -230,12 +232,14 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGoogleButton() {
+  Widget _buildGoogleButton(WidgetRef ref) {
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: OutlinedButton(
-        onPressed: () {},
+        onPressed: () {
+          ref.read(authProvider.notifier).signInWithGoogle();
+        },
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.black,
           side: BorderSide(color: Colors.grey[300]!),

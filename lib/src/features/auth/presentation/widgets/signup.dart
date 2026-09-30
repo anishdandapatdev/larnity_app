@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/features/auth/presentation/widgets/signin.dart';
 
-class SignupScreen extends StatelessWidget {
+class SignupScreen extends ConsumerWidget {
   const SignupScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -102,7 +104,7 @@ class SignupScreen extends StatelessWidget {
                 const SizedBox(height: 40),
                 _buildDivider(),
                 const SizedBox(height: 30),
-                _buildGoogleButton(),
+                _buildGoogleButton(ref),
                 const SizedBox(height: 40),
               ],
             ),
@@ -163,12 +165,14 @@ class SignupScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGoogleButton() {
+  Widget _buildGoogleButton(WidgetRef ref) {
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: OutlinedButton(
-        onPressed: () {},
+        onPressed: () {
+          ref.read(authProvider.notifier).signInWithGoogle();
+        },
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.black,
           side: BorderSide(color: Colors.grey[300]!),

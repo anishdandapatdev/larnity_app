@@ -100,10 +100,15 @@ class AuthNotifier extends Notifier<AuthState> {
     final res = await datasource.getCurrentUserData();
 
     res.fold(
-      (failure) => state = state.copyWith(
-        currentUserState: AsyncState.failure,
-        isAuthenticated: false,
-      ),
+      (failure) {
+        Log.error("getCurrentUser error: ${failure.message}");
+        final hasSession =
+            ref.read(supabaseClientProvider).auth.currentSession != null;
+        state = state.copyWith(
+          currentUserState: AsyncState.failure,
+          isAuthenticated: hasSession,
+        );
+      },
       (user) {
         if (user != null) {
           ref.read(userCacheServiceProvider).saveUser(

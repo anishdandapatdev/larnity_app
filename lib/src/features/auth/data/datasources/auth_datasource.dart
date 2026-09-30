@@ -173,36 +173,57 @@ class AuthDatasource {
   Future<Either<Failure, UserModel?>> getCurrentUserData() async {
     try {
       if (currentUserSession != null) {
-        final userData = await supabaseClient
-            .from('profiles')
-            .select()
-            .eq('id', currentUserSession!.user.id);
-        if (userData.isEmpty) {
-          // If profile does not exist yet (e.g. brand new user via OAuth), create it from session user metadata
-          final userModel = UserModel.fromMap(
-            currentUserSession!.user.toJson(),
-          );
+        try {
+          final userData = await supabaseClient
+              .from('profiles')
+              .select()
+              .eq('id', currentUserSession!.user.id);
+          if (userData.isNotEmpty) {
+            return right(
+              UserModel.fromMap(
+                userData.first,
+              ).copyWith(email: currentUserSession!.user.email),
+            );
+          }
+        } catch (fetchError) {
+          Log.warning("Error fetching profiles row: $fetchError");
+        }
+
+        // Profile does not exist yet (brand new OAuth user) or query failed:
+        // Try creating it from session user metadata with safe fallback
+        final userModel = UserModel.fromMap(
+          currentUserSession!.user.toJson(),
+        );
+
+        try {
           final inserted = await supabaseClient
               .from('profiles')
               .upsert(userModel.toMap(), onConflict: 'id')
               .select();
-          final resolvedUser = inserted.isNotEmpty
-              ? UserModel.fromMap(inserted.first).copyWith(
-                  email: currentUserSession!.user.email,
-                )
-              : userModel;
-          return right(resolvedUser);
+          if (inserted.isNotEmpty) {
+            return right(
+              UserModel.fromMap(inserted.first).copyWith(
+                email: currentUserSession!.user.email,
+              ),
+            );
+          }
+        } catch (upsertError) {
+          Log.warning("Error upserting profile, using session metadata fallback: $upsertError");
         }
 
-        return right(
-          UserModel.fromMap(
-            userData.first,
-          ).copyWith(email: currentUserSession!.user.email),
-        );
+        // Return userModel constructed from session user metadata as safe fallback
+        return right(userModel);
       } else {
         return left(Failure("No user found"));
       }
     } catch (e) {
+      Log.error("Error in getCurrentUserData: $e");
+      if (currentUserSession != null) {
+        final fallbackUser = UserModel.fromMap(
+          currentUserSession!.user.toJson(),
+        );
+        return right(fallbackUser);
+      }
       return left(Failure(e.toString()));
     }
   }
