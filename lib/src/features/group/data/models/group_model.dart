@@ -1,5 +1,6 @@
 // ignore_for_file: constant_identifier_names
 
+import 'dart:convert';
 import 'package:equatable/equatable.dart';
 
 enum GroupPrivacy { PUBLIC, PRIVATE }
@@ -141,7 +142,7 @@ class GroupModel extends Equatable {
       'googleSheetId': googleSheetId,
       'enableGoogleSheetSync': enableGoogleSheetSync,
       'icon': icon,
-      // 'privacy': privacy?.name,
+      'privacy': privacy?.name,
       'active': active,
       'userId': userId,
       'domain': domain,
@@ -149,7 +150,7 @@ class GroupModel extends Equatable {
       'yearlyPrice': yearlyPrice,
       'lifetimePrice': lifetimePrice,
       'isSuspended': isSuspended,
-      // 'updated_at': updatedAt?.toIso8601String(),
+      'updated_at': updatedAt?.toUtc().toIso8601String(),
       'packageSubscriptionId': packageSubscriptionId,
       'rejectionReason': rejectionReason,
       // 'status': status?.name,
@@ -207,9 +208,21 @@ class GroupModel extends Equatable {
         orElse: () => GroupStatus.CREATED,
       ),
       slug: map['slug']?.toString(),
-      landingSettings: map['landingSettings'] is Map<String, dynamic>
-          ? map['landingSettings'] as Map<String, dynamic>
-          : null,
+      landingSettings: () {
+        final raw = map['landingSettings'];
+        if (raw is Map) {
+          return Map<String, dynamic>.from(raw);
+        }
+        if (raw is String && raw.trim().isNotEmpty) {
+          try {
+            final decoded = json.decode(raw);
+            if (decoded is Map) {
+              return Map<String, dynamic>.from(decoded);
+            }
+          } catch (_) {}
+        }
+        return null;
+      }(),
       memberCount: (map['memberCount'] as num?)?.toInt() ??
           (map['member_count'] as num?)?.toInt() ??
           (map['membersCount'] as num?)?.toInt() ??

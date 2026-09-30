@@ -22,6 +22,7 @@ class AppStrings {
   static const String groupThumbnail = "Group Thumbnail";
   static const String changeThumbnail = "Change Thumbnail";
   static const String groupPrivacy = "Group Privacy";
+  static const String groupIcon = "Group Icon";
   static const String changeIcon = "Change Icon";
   static const String groupName = "Group Name";
   static const String groupSlug = "Group Slug";

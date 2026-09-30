@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:hugeicons/styles/stroke_rounded.dart';
 import 'package:larnity/src/core/constants/app_size.dart';
 import 'package:larnity/src/core/constants/app_strings.dart';
 import 'package:larnity/src/core/extensions/extensions.dart';
+import 'package:larnity/src/core/router/router.dart';
 import 'package:larnity/src/core/theme/app_colors.dart';
 import 'package:larnity/src/core/theme/theme.dart';
 import 'package:larnity/src/core/ui/widgets/app_button.dart';
@@ -84,6 +86,14 @@ class _SubscriptionSettingsScreenState
         );
   }
 
+  void _navigateBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.goNamed(Routes.group);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final groupState = ref.watch(groupProvider);
@@ -97,7 +107,7 @@ class _SubscriptionSettingsScreenState
           backgroundColor: AppColors.darkBg,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.white),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _navigateBack,
           ),
         ),
         body: const Center(
@@ -116,7 +126,7 @@ class _SubscriptionSettingsScreenState
           backgroundColor: AppColors.darkBg,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.white),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _navigateBack,
           ),
           title: const Text("Subscription Settings", style: TextStyle(color: Colors.white)),
         ),
@@ -158,16 +168,21 @@ class _SubscriptionSettingsScreenState
         backgroundColor: AppColors.darkBg,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _navigateBack,
         ),
         title: Text(
           "Subscriptions",
           style: AppTextStyles.headline3(color: AppColors.white),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),
-        child: SingleChildScrollView(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSizes.xs),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -290,22 +305,12 @@ class _SubscriptionSettingsScreenState
                     ),
                     AppSizes.lg.ph,
                     AppButton(
-                      onPressed: _isLoading ? () {} : () => _updatePrices(group),
+                      isLoading: _isLoading,
+                      onPressed: _isLoading ? null : () => _updatePrices(group),
                       bgColor: AppColors.primaryOrange,
                       radius: AppSizes.xxxs,
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.black,
-                              ),
-                            )
-                          : Text(
-                              AppStrings.updatePrices,
-                              style: AppTextStyles.bodyText2(color: Colors.black),
-                            ),
+                      label: AppStrings.updatePrices,
+                      labelStyle: AppTextStyles.bodyText2(color: Colors.black),
                     ),
                   ],
                 ),
@@ -432,6 +437,7 @@ class _SubscriptionSettingsScreenState
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

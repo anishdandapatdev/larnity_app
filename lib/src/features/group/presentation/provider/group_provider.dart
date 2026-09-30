@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
 import 'package:larnity/src/core/service/supabase/src/supabase_table.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
+import 'package:larnity/src/core/utils/logger.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/features/explore/domain/category.dart';
 import 'package:larnity/src/features/group/data/datasource/group_datasource.dart';
@@ -213,46 +214,59 @@ class GroupNotifier extends Notifier<GroupState> {
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
-    final currentUserId = ref.read(authProvider).user?.id ??
-        ref.read(supabaseClientProvider).auth.currentUser?.id;
-    final isAllowed = ref.read(isGroupAdminOrOwnerForGroupProvider(group.id)) ||
-        (group.userId != null && group.userId == currentUserId);
-    if (!isAllowed) {
-      final error =
-          "Permission denied: Only group admins or owners can update group details.";
-      state = state.copyWith(
-        createState: AsyncState.failure,
-        error: error,
-      );
-      failureCallBack?.call(error);
-      return;
-    }
-
-    final dataSource = ref.read(groupDataSourceProvider);
-    state = state.copyWith(createState: AsyncState.loading);
-    final response = await dataSource.updateGroup(group: group);
-
-    response.fold(
-      (failure) {
+    try {
+      final currentUserId = ref.read(authProvider).user?.id ??
+          ref.read(supabaseClientProvider).auth.currentUser?.id;
+      final isOwner = group.userId != null && group.userId == currentUserId;
+      final isStateOwner =
+          state.group?.userId != null && state.group?.userId == currentUserId;
+      final isAllowed = isOwner ||
+          isStateOwner ||
+          ref.read(isGroupAdminOrOwnerForGroupProvider(group.id));
+      if (!isAllowed) {
+        final error =
+            "Permission denied: Only group admins or owners can update group details.";
         state = state.copyWith(
           createState: AsyncState.failure,
-          error: failure.message,
+          error: error,
         );
-        failureCallBack?.call(failure.message);
-      },
-      (updatedGroup) {
-        final updatedGroups = state.groups?.map((g) {
-          return g.id == updatedGroup.id ? updatedGroup : g;
-        }).toList();
+        failureCallBack?.call(error);
+        return;
+      }
 
-        state = state.copyWith(
-          createState: AsyncState.success,
-          group: updatedGroup,
-          groups: updatedGroups,
-        );
-        successCallBack?.call();
-      },
-    );
+      final dataSource = ref.read(groupDataSourceProvider);
+      state = state.copyWith(createState: AsyncState.loading);
+      final response = await dataSource.updateGroup(group: group);
+
+      response.fold(
+        (failure) {
+          state = state.copyWith(
+            createState: AsyncState.failure,
+            error: failure.message,
+          );
+          failureCallBack?.call(failure.message);
+        },
+        (updatedGroup) {
+          final updatedGroups = state.groups?.map((g) {
+            return g.id == updatedGroup.id ? updatedGroup : g;
+          }).toList();
+
+          state = state.copyWith(
+            createState: AsyncState.success,
+            group: updatedGroup,
+            groups: updatedGroups,
+          );
+          successCallBack?.call();
+        },
+      );
+    } catch (e, stack) {
+      Log.error("updateGroup error: $e", stackTrace: stack);
+      state = state.copyWith(
+        createState: AsyncState.failure,
+        error: e.toString(),
+      );
+      failureCallBack?.call(e.toString());
+    }
   }
 
   Future<void> getGroupBySlug({required String slug}) async {

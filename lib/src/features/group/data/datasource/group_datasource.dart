@@ -305,9 +305,20 @@ class GroupDataSource {
     required GroupModel group,
   }) async {
     try {
+      final updateData = Map<String, dynamic>.from(group.toMap());
+      // Remove immutable and primary key columns that should not be in UPDATE payload
+      updateData.remove('id');
+      updateData.remove('created_at');
+      updateData.remove('userId');
+      updateData.remove('packageSubscriptionId');
+      updateData.remove('rejectionReason');
+      updateData.remove('status');
+
+      Log.info("Update Group Payload: $updateData");
+
       final response = await supabaseClient
           .from('Group')
-          .update(group.toMap())
+          .update(updateData)
           .eq('id', group.id ?? "")
           .select()
           .single();
