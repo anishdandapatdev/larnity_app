@@ -1329,7 +1329,7 @@ class _ContentViewerModalState extends State<_ContentViewerModal> {
                   child: Image.network(
                     imgUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       height: 120,
                       color: AppColors.darkBgContainer,
                       child: const Center(

@@ -102,7 +102,7 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       height: 140,
                       color: AppColors.darkBg,
                       child: const Center(
@@ -841,7 +841,7 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                                   height: 140,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
+                                  errorBuilder: (_, _, _) => Container(
                                     height: 140,
                                     width: double.infinity,
                                     color: AppColors.darkBg,
