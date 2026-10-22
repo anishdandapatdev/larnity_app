@@ -808,7 +808,10 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen> {
                     ),
                   ),
 
-                  AppSizes.xxxlg.ph,
+                  // Ensure link copy box stays fully visible above the floating bottom navigation bar
+                  SizedBox(
+                    height: 110 + MediaQuery.paddingOf(context).bottom,
+                  ),
                 ],
               ),
             ),

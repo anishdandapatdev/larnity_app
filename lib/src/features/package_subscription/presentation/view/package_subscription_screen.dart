@@ -569,7 +569,9 @@ class _PackageSubscriptionScreenState
                   ),
                 ),
               ),
-              AppSizes.xxxlg.ph,
+              SizedBox(
+                height: 110 + MediaQuery.paddingOf(context).bottom,
+              ),
             ],
           ),
         ),
