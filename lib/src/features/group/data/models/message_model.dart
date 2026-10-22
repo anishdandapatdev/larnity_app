@@ -53,21 +53,18 @@ class MessageModel extends Equatable {
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
-      'channelId': channelId,
-      'userId': userId,
-      'content': content,
-      'type': type ?? 'text',
-      'mediaUrl': mediaUrl,
-      'replyToId': replyToId,
+      'recieverId': channelId,
+      'senderid': userId,
+      'message': content,
     }..removeWhere((key, value) => value == null);
   }
 
   factory MessageModel.fromMap(Map<String, dynamic> map) {
     return MessageModel(
       id: map['id'] as String?,
-      channelId: map['channelId'] as String,
-      userId: map['userId'] as String,
-      content: map['content'] as String?,
+      channelId: (map['recieverId'] ?? map['channelId'] ?? '') as String,
+      userId: (map['senderid'] ?? map['userId'] ?? '') as String,
+      content: (map['message'] ?? map['content']) as String?,
       type: map['type'] as String? ?? 'text',
       mediaUrl: map['mediaUrl'] as String?,
       replyToId: map['replyToId'] as String?,

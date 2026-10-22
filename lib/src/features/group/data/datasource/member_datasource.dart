@@ -35,6 +35,59 @@ class MemberDataSource {
           .map((e) => MemberModel.fromMap(e as Map<String, dynamic>))
           .toList();
 
+      // Ensure the group creator/owner is always included even if not explicitly enrolled in Members yet
+      if (offset == 0 && groupId.isNotEmpty) {
+        try {
+          final groupRow = await supabaseClient
+              .from('Group')
+              .select('userId, profiles(*)')
+              .eq('id', groupId)
+              .maybeSingle();
+
+          if (groupRow != null && groupRow['userId'] != null) {
+            final ownerId = groupRow['userId'] as String;
+            final alreadyInList = members.any((m) => m.userId == ownerId);
+            if (!alreadyInList) {
+              final ownerProfile =
+                  groupRow['profiles'] as Map<String, dynamic>?;
+              final ownerMember = MemberModel(
+                id: 'owner-$ownerId',
+                groupId: groupId,
+                userId: ownerId,
+                role: 'ADMIN',
+                planType: 'LIFETIME',
+                isActive: true,
+                profile: ownerProfile,
+              );
+              members.insert(0, ownerMember);
+
+              // Auto-enroll in Members table for persistent consistency
+              try {
+                final existing = await supabaseClient
+                    .from(SupabaseTable.members)
+                    .select('id')
+                    .eq('groupId', groupId)
+                    .eq('userId', ownerId)
+                    .maybeSingle();
+
+                if (existing == null) {
+                  await supabaseClient.from(SupabaseTable.members).insert({
+                    'groupId': groupId,
+                    'userId': ownerId,
+                    'role': 'ADMIN',
+                    'isActive': true,
+                    'planType': 'LIFETIME',
+                    'subscriptionStartDate': DateTime.now().toIso8601String(),
+                  });
+                }
+              } catch (_) {}
+            }
+          }
+        } catch (ownerErr) {
+          Log.warning("Could not check group owner in getMembers: $ownerErr");
+        }
+      }
+
       Log.info('Fetched ${members.length} members for group $groupId');
       return Right(members);
     } on PostgrestException catch (e) {
@@ -93,19 +146,47 @@ class MemberDataSource {
   }) async {
     try {
       final memberMap = member.toMap()..remove('id');
+      
+      // Check if membership already exists to avoid ON CONFLICT constraint error
+      final existing = await supabaseClient
+          .from(SupabaseTable.members)
+          .select('id')
+          .eq('groupId', member.groupId)
+          .eq('userId', member.userId)
+          .maybeSingle();
+
       Map<String, dynamic> response;
-      try {
-        response = await supabaseClient
-            .from(SupabaseTable.members)
-            .upsert(memberMap, onConflict: 'groupId,userId')
-            .select('*, profiles(*)')
-            .single();
-      } catch (_) {
-        response = await supabaseClient
-            .from(SupabaseTable.members)
-            .upsert(memberMap, onConflict: 'groupId,userId')
-            .select()
-            .single();
+      if (existing != null && existing['id'] != null) {
+        final memberId = existing['id'];
+        try {
+          response = await supabaseClient
+              .from(SupabaseTable.members)
+              .update(memberMap)
+              .eq('id', memberId)
+              .select('*, profiles(*)')
+              .single();
+        } catch (_) {
+          response = await supabaseClient
+              .from(SupabaseTable.members)
+              .update(memberMap)
+              .eq('id', memberId)
+              .select()
+              .single();
+        }
+      } else {
+        try {
+          response = await supabaseClient
+              .from(SupabaseTable.members)
+              .insert(memberMap)
+              .select('*, profiles(*)')
+              .single();
+        } catch (_) {
+          response = await supabaseClient
+              .from(SupabaseTable.members)
+              .insert(memberMap)
+              .select()
+              .single();
+        }
       }
 
       final updated = MemberModel.fromMap(response);
@@ -255,7 +336,21 @@ class MemberDataSource {
           .eq('groupId', groupId)
           .count(CountOption.exact);
 
-      return Right(response.count);
+      int count = response.count;
+      if (count == 0 && groupId.isNotEmpty) {
+        try {
+          final groupRow = await supabaseClient
+              .from('Group')
+              .select('userId')
+              .eq('id', groupId)
+              .maybeSingle();
+          if (groupRow != null && groupRow['userId'] != null) {
+            count = 1;
+          }
+        } catch (_) {}
+      }
+
+      return Right(count);
     } on PostgrestException catch (e) {
       Log.error('getMemberCount error: ${e.message}');
       return Left(Failure(e.message));

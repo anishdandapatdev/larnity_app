@@ -33,15 +33,24 @@ class GroupDataSource {
       final ownerId = group.userId ?? supabaseClient.auth.currentUser?.id;
       if (createdGroup.id != null && ownerId != null) {
         try {
-          await supabaseClient.from(SupabaseTable.members).upsert({
-            'groupId': createdGroup.id,
-            'userId': ownerId,
-            'role': 'ADMIN',
-            'isActive': true,
-            'planType': 'OWNER',
-            'subscriptionStartDate': DateTime.now().toIso8601String(),
-          }, onConflict: 'groupId,userId');
-          Log.info("Auto-enrolled group creator $ownerId as ADMIN in Members");
+          final existing = await supabaseClient
+              .from(SupabaseTable.members)
+              .select('id')
+              .eq('groupId', createdGroup.id!)
+              .eq('userId', ownerId)
+              .maybeSingle();
+
+          if (existing == null) {
+            await supabaseClient.from(SupabaseTable.members).insert({
+              'groupId': createdGroup.id,
+              'userId': ownerId,
+              'role': 'ADMIN',
+              'isActive': true,
+              'planType': 'LIFETIME',
+              'subscriptionStartDate': DateTime.now().toIso8601String(),
+            });
+            Log.info("Auto-enrolled group creator $ownerId as ADMIN in Members");
+          }
         } catch (memberErr) {
           Log.warning("Could not auto-enroll creator in Members: $memberErr");
         }

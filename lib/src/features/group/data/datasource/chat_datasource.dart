@@ -64,16 +64,44 @@ class ChatDataSource {
   /// Get messages for a channel (newest first for pagination).
   Future<Either<Failure, List<MessageModel>>> getMessages({
     required String channelId,
+    String? groupId,
     int limit = 50,
     int offset = 0,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.message)
-          .select('*, profiles(*)')
-          .eq('channelId', channelId)
-          .order('created_at', ascending: false)
-          .range(offset, offset + limit - 1);
+      dynamic response;
+      try {
+        var query = supabaseClient
+            .from(SupabaseTable.message)
+            .select('*, profiles(*)');
+
+        if (groupId != null && groupId.isNotEmpty) {
+          query = query.or('recieverId.eq.$channelId,recieverId.eq.$groupId');
+        } else {
+          query = query.eq('recieverId', channelId);
+        }
+
+        response = await query
+            .order('created_at', ascending: false)
+            .range(offset, offset + limit - 1);
+      } catch (e) {
+        Log.warning(
+          'getMessages relational query failed ($e), falling back to simple select',
+        );
+        var query = supabaseClient
+            .from(SupabaseTable.message)
+            .select('*');
+
+        if (groupId != null && groupId.isNotEmpty) {
+          query = query.or('recieverId.eq.$channelId,recieverId.eq.$groupId');
+        } else {
+          query = query.eq('recieverId', channelId);
+        }
+
+        response = await query
+            .order('created_at', ascending: false)
+            .range(offset, offset + limit - 1);
+      }
 
       final messages = (response as List)
           .map((e) => MessageModel.fromMap(e as Map<String, dynamic>))
@@ -95,13 +123,25 @@ class ChatDataSource {
     required MessageModel message,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.message)
-          .insert(message.toMap())
-          .select('*, profiles(*)')
-          .single();
+      dynamic response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.message)
+            .insert(message.toMap())
+            .select('*, profiles(*)')
+            .single();
+      } catch (e) {
+        Log.warning(
+          'sendMessage relational insert failed ($e), trying simple insert',
+        );
+        response = await supabaseClient
+            .from(SupabaseTable.message)
+            .insert(message.toMap())
+            .select('*')
+            .single();
+      }
 
-      final sent = MessageModel.fromMap(response);
+      final sent = MessageModel.fromMap(response as Map<String, dynamic>);
       Log.info('Sent message: ${sent.id}');
       return Right(sent);
     } on PostgrestException catch (e) {
@@ -119,17 +159,28 @@ class ChatDataSource {
     required String content,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(SupabaseTable.message)
-          .update({
-            'content': content,
-            'isEdited': true,
-          })
-          .eq('id', messageId)
-          .select('*, profiles(*)')
-          .single();
+      dynamic response;
+      try {
+        response = await supabaseClient
+            .from(SupabaseTable.message)
+            .update({
+              'message': content,
+            })
+            .eq('id', messageId)
+            .select('*, profiles(*)')
+            .single();
+      } catch (e) {
+        response = await supabaseClient
+            .from(SupabaseTable.message)
+            .update({
+              'message': content,
+            })
+            .eq('id', messageId)
+            .select('*')
+            .single();
+      }
 
-      final updated = MessageModel.fromMap(response);
+      final updated = MessageModel.fromMap(response as Map<String, dynamic>);
       Log.info('Edited message: $messageId');
       return Right(updated);
     } on PostgrestException catch (e) {
@@ -169,7 +220,7 @@ class ChatDataSource {
     return supabaseClient
         .from(SupabaseTable.message)
         .stream(primaryKey: ['id'])
-        .eq('channelId', channelId)
+        .eq('recieverId', channelId)
         .order('created_at', ascending: true);
   }
 }

@@ -1,8 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_provider.dart';
+import 'package:larnity/src/core/service/supabase/src/supabase_table.dart';
 import 'package:larnity/src/core/utils/async_states.dart';
+import 'package:larnity/src/core/utils/logger.dart';
 import 'package:larnity/src/features/group/data/datasource/chat_datasource.dart';
 import 'package:larnity/src/features/group/data/models/channel_model.dart';
 import 'package:larnity/src/features/group/data/models/message_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ChatState {
   final AsyncState? fetchState;
@@ -40,14 +44,45 @@ final chatProvider = NotifierProvider.autoDispose
 
 class ChatNotifier extends AutoDisposeFamilyNotifier<ChatState, String> {
   static const int _pageSize = 50;
+  RealtimeChannel? _realtimeChannel;
 
   @override
   ChatState build(String arg) {
-    Future.microtask(() => fetchChannels());
+    ref.onDispose(() {
+      _realtimeChannel?.unsubscribe();
+    });
+    Future.microtask(() {
+      fetchChannels();
+      _subscribeRealtime();
+    });
     return ChatState(fetchState: AsyncState.initial);
   }
 
   String get _groupId => arg;
+
+  void _subscribeRealtime() {
+    _realtimeChannel?.unsubscribe();
+    try {
+      final client = ref.read(supabaseClientProvider);
+      _realtimeChannel = client
+          .channel('public:Message:$_groupId')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: SupabaseTable.message,
+            callback: (payload) {
+              final newRecord = payload.newRecord;
+              if (newRecord.isNotEmpty) {
+                final msg = MessageModel.fromMap(newRecord);
+                addRealtimeMessage(msg);
+              }
+            },
+          )
+          .subscribe();
+    } catch (e) {
+      Log.warning('Failed to subscribe to chat realtime: $e');
+    }
+  }
 
   Future<void> fetchChannels() async {
     final ds = ref.read(chatDataSourceProvider);
@@ -77,9 +112,18 @@ class ChatNotifier extends AutoDisposeFamilyNotifier<ChatState, String> {
             },
           );
         } else {
-          state = state.copyWith(fetchState: AsyncState.success, channels: channels);
-          if (state.selectedChannel == null) {
-            selectChannel(channels.first);
+          // Deduplicate channels by lowercase name
+          final uniqueChannels = <String, ChannelModel>{};
+          for (final chan in channels) {
+            final key = chan.name?.trim().toLowerCase() ?? chan.id ?? '';
+            if (key.isNotEmpty && !uniqueChannels.containsKey(key)) {
+              uniqueChannels[key] = chan;
+            }
+          }
+          final cleanChannels = uniqueChannels.values.toList();
+          state = state.copyWith(fetchState: AsyncState.success, channels: cleanChannels);
+          if (state.selectedChannel == null && cleanChannels.isNotEmpty) {
+            selectChannel(cleanChannels.first);
           }
         }
       },
@@ -104,7 +148,10 @@ class ChatNotifier extends AutoDisposeFamilyNotifier<ChatState, String> {
     state = state.copyWith(fetchState: AsyncState.loading, offset: 0);
 
     final result = await ds.getMessages(
-      channelId: channelId, limit: _pageSize, offset: 0,
+      channelId: channelId,
+      groupId: _groupId,
+      limit: _pageSize,
+      offset: 0,
     );
 
     result.fold(
@@ -128,7 +175,10 @@ class ChatNotifier extends AutoDisposeFamilyNotifier<ChatState, String> {
 
     final ds = ref.read(chatDataSourceProvider);
     final result = await ds.getMessages(
-      channelId: channelId, limit: _pageSize, offset: state.offset,
+      channelId: channelId,
+      groupId: _groupId,
+      limit: _pageSize,
+      offset: state.offset,
     );
 
     result.fold(
@@ -181,9 +231,14 @@ class ChatNotifier extends AutoDisposeFamilyNotifier<ChatState, String> {
 
   /// Add a message from realtime subscription.
   void addRealtimeMessage(MessageModel message) {
-    if (message.channelId != state.selectedChannel?.id) return;
+    if (message.channelId != state.selectedChannel?.id &&
+        message.channelId != _groupId) {
+      return;
+    }
     // Avoid duplicates
-    if (state.messages?.any((m) => m.id == message.id) == true) return;
+    if (state.messages?.any((m) => m.id == message.id) == true) {
+      return;
+    }
     state = state.copyWith(messages: <MessageModel>[...?state.messages, message]);
   }
 }
