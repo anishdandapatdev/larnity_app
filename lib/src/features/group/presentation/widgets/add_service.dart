@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -84,8 +85,19 @@ class _AddServiceState extends ConsumerState<AddService> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a service price')));
       return;
     }
-    if (whatsapp.isEmpty) {
+    String cleanDigits = whatsapp.replaceAll(RegExp(r'\D'), '');
+    if (cleanDigits.startsWith('91') && cleanDigits.length == 12) {
+      cleanDigits = cleanDigits.substring(2);
+    } else if (cleanDigits.startsWith('0') && cleanDigits.length == 11) {
+      cleanDigits = cleanDigits.substring(1);
+    }
+
+    if (cleanDigits.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a WhatsApp number')));
+      return;
+    }
+    if (cleanDigits.length != 10) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid 10-digit WhatsApp number')));
       return;
     }
 
@@ -114,18 +126,13 @@ class _AddServiceState extends ConsumerState<AddService> {
       num price = num.tryParse(priceStr) ?? 0;
       num? discountPrice = num.tryParse(_discountPriceController.text.trim());
 
-      String cleanWhatsapp = whatsapp.replaceAll(' ', '').replaceAll('-', '');
-      if (!cleanWhatsapp.startsWith('+')) {
-        cleanWhatsapp = '+91$cleanWhatsapp';
-      }
-
       final service = ProductModel(
         groupId: effectiveGroupId,
         name: name,
         description: desc,
         price: price,
         discountPrice: discountPrice,
-        whatsappNumber: cleanWhatsapp,
+        whatsappNumber: '91$cleanDigits',
         imageUrl: imageUrl,
         type: 'SERVICE',
         rating: _selectedRating,
@@ -174,7 +181,13 @@ class _AddServiceState extends ConsumerState<AddService> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(AppStrings.createNewService, style: AppTextStyles.headline4()),
+                Flexible(
+                  child: Text(
+                    AppStrings.createNewService,
+                    style: AppTextStyles.headline4(),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
             ),
             Row(
@@ -233,10 +246,14 @@ class _AddServiceState extends ConsumerState<AddService> {
               controller: _whatsappController,
               style: const TextStyle(color: AppColors.white),
               keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
               decoration: InputDecoration(
                 filled: true,
                 fillColor: AppColors.darkBgContainer,
-                hintText: "Enter number",
+                hintText: "Enter 10-digit number",
                 hintStyle: AppTextStyles.button(color: AppColors.skyBlue),
                 prefixText: '+91 ',
                 prefixStyle: const TextStyle(color: AppColors.white),

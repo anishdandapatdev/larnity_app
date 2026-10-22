@@ -19,12 +19,44 @@ class ServiceCard extends ConsumerWidget {
 
   const ServiceCard({super.key, required this.service});
 
-  Future<void> _launchWhatsApp() async {
+  Future<void> _launchWhatsApp(BuildContext context) async {
+    // 1. Sanitize the phone number: digits only (strips +, -, spaces, etc.)
+    String cleanNumber = service.whatsappNumber.replaceAll(RegExp(r'\D'), '');
+    if (cleanNumber.startsWith('0')) {
+      cleanNumber = cleanNumber.substring(1);
+    }
+    // If it's a 10-digit Indian number without country code, prepend 91
+    if (cleanNumber.length == 10) {
+      cleanNumber = '91$cleanNumber';
+    }
+
+    if (cleanNumber.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('WhatsApp contact number is not available')),
+        );
+      }
+      return;
+    }
+
     final message = Uri.encodeComponent("I wanna buy this service: ${service.name}");
-    final whatsappUrl = "https://wa.me/${service.whatsappNumber}?text=$message";
-    final uri = Uri.tryParse(whatsappUrl);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final whatsappUri = Uri.parse("whatsapp://send?phone=$cleanNumber&text=$message");
+    final webUri = Uri.parse("https://wa.me/$cleanNumber?text=$message");
+
+    try {
+      if (await canLaunchUrl(whatsappUri)) {
+        await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(webUri)) {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(webUri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open WhatsApp. Please check if WhatsApp is installed.')),
+        );
+      }
     }
   }
 
@@ -214,7 +246,7 @@ class ServiceCard extends ConsumerWidget {
                   ),
                   const Spacer(),
                   AppButton(
-                    onPressed: _launchWhatsApp,
+                    onPressed: () => _launchWhatsApp(context),
                     label: AppStrings.buyNow,
                     prefix: const HugeIcon(
                       icon: HugeIconsStrokeRounded.cloudDownload,
