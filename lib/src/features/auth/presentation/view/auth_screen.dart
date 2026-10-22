@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -102,6 +103,11 @@ class AuthScreen extends ConsumerWidget {
                                   controller: authNotifier.firstNameController,
                                   hintText: 'First name',
                                   obscureText: false,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(
+                                      RegExp(r'[a-zA-Z\s]'),
+                                    ),
+                                  ],
                                 ),
                                 AppSizes.xxxs.ph,
 
@@ -110,6 +116,11 @@ class AuthScreen extends ConsumerWidget {
                                   controller: authNotifier.lastNameController,
                                   hintText: 'Last name',
                                   obscureText: false,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(
+                                      RegExp(r'[a-zA-Z\s]'),
+                                    ),
+                                  ],
                                 ),
                                 AppSizes.xxxs.ph,
                               ],
@@ -219,6 +230,62 @@ class AuthScreen extends ConsumerWidget {
                                     //   ),
                                     // );
                                   } else {
+                                    final fName = authNotifier
+                                        .firstNameController
+                                        .text
+                                        .trim();
+                                    final lName = authNotifier
+                                        .lastNameController
+                                        .text
+                                        .trim();
+                                    final email = authNotifier
+                                        .emailController
+                                        .text
+                                        .trim();
+                                    final pass =
+                                        authNotifier.passController.text.trim();
+
+                                    if (fName.isEmpty) {
+                                      showErrorToast(
+                                        content: 'Please enter your first name',
+                                      );
+                                      return;
+                                    }
+                                    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(fName)) {
+                                      showErrorToast(
+                                        content:
+                                            'First name can only contain letters',
+                                      );
+                                      return;
+                                    }
+                                    if (lName.isNotEmpty &&
+                                        !RegExp(r'^[a-zA-Z\s]+$').hasMatch(lName)) {
+                                      showErrorToast(
+                                        content:
+                                            'Last name can only contain letters',
+                                      );
+                                      return;
+                                    }
+                                    if (email.isEmpty) {
+                                      showErrorToast(
+                                        content: 'Please enter your email',
+                                      );
+                                      return;
+                                    }
+                                    if (pass.isEmpty) {
+                                      showErrorToast(
+                                        content: 'Please enter your password',
+                                      );
+                                      return;
+                                    }
+                                    if (pass.length < 6) {
+                                      showErrorToast(
+                                        content:
+                                            'Password must be at least 6 characters',
+                                      );
+                                      return;
+                                    }
+
                                     authNotifier.signUpWithEmail(
                                       successCallBack: () {
                                         authNotifier.getCurrentUser();
@@ -390,10 +457,11 @@ class AuthScreen extends ConsumerWidget {
     required String hintText,
     required bool obscureText,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
-
+      inputFormatters: inputFormatters,
       keyboardType: keyboardType,
       style: AppTextStyles.overLine(color: AppColors.white),
       decoration: InputDecoration(

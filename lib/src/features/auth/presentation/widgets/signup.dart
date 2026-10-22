@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:larnity/src/features/auth/presentation/provider/auth_provider.dart';
 import 'package:larnity/src/features/auth/presentation/widgets/signin.dart';
@@ -41,9 +42,21 @@ class SignupScreen extends ConsumerWidget {
 
                 const SizedBox(height: 40),
 
-                _buildTextField(hintText: 'First name', obscureText: false),
+                _buildTextField(
+                  hintText: 'First name',
+                  obscureText: false,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                  ],
+                ),
                 const SizedBox(height: 20),
-                _buildTextField(hintText: 'Last name', obscureText: false),
+                _buildTextField(
+                  hintText: 'Last name',
+                  obscureText: false,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                  ],
+                ),
                 const SizedBox(height: 20),
                 _buildTextField(hintText: 'Email', obscureText: false),
                 const SizedBox(height: 20),
@@ -117,9 +130,11 @@ class SignupScreen extends ConsumerWidget {
   Widget _buildTextField({
     required String hintText,
     required bool obscureText,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextField(
       obscureText: obscureText,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(color: Colors.grey[500]),

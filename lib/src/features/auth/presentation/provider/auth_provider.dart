@@ -181,6 +181,36 @@ class AuthNotifier extends Notifier<AuthState> {
     void Function()? failureCallBack,
     void Function()? successCallBack,
   }) async {
+    final fName = firstNameController.text.trim();
+    final lName = lastNameController.text.trim();
+
+    if (fName.isEmpty) {
+      state = state.copyWith(
+        signupState: AsyncState.failure,
+        error: "First name cannot be empty",
+      );
+      failureCallBack?.call();
+      return;
+    }
+
+    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(fName)) {
+      state = state.copyWith(
+        signupState: AsyncState.failure,
+        error: "First name can only contain letters",
+      );
+      failureCallBack?.call();
+      return;
+    }
+
+    if (lName.isNotEmpty && !RegExp(r'^[a-zA-Z\s]+$').hasMatch(lName)) {
+      state = state.copyWith(
+        signupState: AsyncState.failure,
+        error: "Last name can only contain letters",
+      );
+      failureCallBack?.call();
+      return;
+    }
+
     final datasource = ref.read(authDataSourceProvider);
 
     state = state.copyWith(signupState: AsyncState.loading);
@@ -188,8 +218,8 @@ class AuthNotifier extends Notifier<AuthState> {
     final response = await datasource.signUpWithEmailPassword(
       user: UserModel(
         email: emailController.text.trim(),
-        firstName: firstNameController.text.trim(),
-        lastName: lastNameController.text.trim(),
+        firstName: fName,
+        lastName: lName,
       ),
       password: passController.text.trim(),
     );
