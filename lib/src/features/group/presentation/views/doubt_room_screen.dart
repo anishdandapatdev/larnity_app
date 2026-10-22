@@ -107,9 +107,9 @@ class _DoubtRoomScreenState extends ConsumerState<DoubtRoomScreen> {
                   onPressed: () {
                     showDialog(
                       context: context,
-                      builder: (context) => const Dialog(
+                      builder: (context) => Dialog(
                         backgroundColor: AppColors.bgBlue,
-                        child: NewSupporter(),
+                        child: NewSupporter(groupId: groupId),
                       ),
                     );
                   },
