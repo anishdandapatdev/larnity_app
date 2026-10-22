@@ -48,6 +48,122 @@ class _JobCardState extends ConsumerState<JobCard> {
     );
   }
 
+  void _showAlreadyAppliedSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.darkBgContainer,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(AppSizes.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.creamWhite.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            AppSizes.sm.ph,
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.green.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.check_circle, color: AppColors.lightGreen, size: 24),
+                  ),
+                ),
+                AppSizes.xs.pw,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Application Submitted',
+                        style: AppTextStyles.headline3(color: AppColors.white),
+                      ),
+                      Text(
+                        widget.job.title,
+                        style: AppTextStyles.caption1(color: AppColors.skyBlue),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            AppSizes.md.ph,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSizes.sm),
+              decoration: BoxDecoration(
+                color: AppColors.bgBlue,
+                borderRadius: BorderRadius.circular(AppSizes.xxs),
+                border: Border.all(color: AppColors.skyBlue.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Status",
+                        style: AppTextStyles.caption2(color: AppColors.skyBlue),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.lightGreen.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          "APPLIED",
+                          style: TextStyle(
+                            color: AppColors.lightGreen,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  AppSizes.xxs.ph,
+                  Text(
+                    "You have already applied for this position. The job poster will review your submission and profile.",
+                    style: AppTextStyles.caption1(color: AppColors.creamWhite),
+                  ),
+                ],
+              ),
+            ),
+            AppSizes.md.ph,
+            AppButton(
+              onPressed: () => Navigator.pop(sheetContext),
+              label: "Got it",
+              labelStyle: AppTextStyles.button(color: Colors.black),
+              bgColor: AppColors.primaryOrange,
+              radius: AppSizes.xxxs,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final jobId = widget.job.id;
@@ -143,9 +259,12 @@ class _JobCardState extends ConsumerState<JobCard> {
                       const Icon(Icons.calendar_today,
                           color: AppColors.white, size: 14),
                       AppSizes.xs.pw,
-                      Text(
-                        'Closes: ${DateFormat('MMM dd, yyyy').format(widget.job.postingEndDate!)}',
-                        style: AppTextStyles.overLine(color: AppColors.creamWhite),
+                      Expanded(
+                        child: Text(
+                          'Closes: ${DateFormat('MMM dd, yyyy').format(widget.job.postingEndDate!)}',
+                          style: AppTextStyles.overLine(color: AppColors.creamWhite),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -163,7 +282,7 @@ class _JobCardState extends ConsumerState<JobCard> {
                         ),
                       )
                     : AppButton(
-                        onPressed: hasApplied ? () {} : _showApplySheet,
+                        onPressed: hasApplied ? _showAlreadyAppliedSheet : _showApplySheet,
                         label: hasApplied
                             ? '✓ Applied'
                             : AppStrings.applyNow,
@@ -171,8 +290,12 @@ class _JobCardState extends ConsumerState<JobCard> {
                           color: hasApplied ? AppColors.white : AppColors.black,
                         ),
                         bgColor: hasApplied
-                            ? AppColors.skyBlue.withValues(alpha: 0.4)
+                            ? AppColors.skyBlue.withValues(alpha: 0.3)
                             : AppColors.primaryOrange,
+                        borderColor: hasApplied
+                            ? AppColors.lightGreen.withValues(alpha: 0.7)
+                            : null,
+                        borderWidth: hasApplied ? 1.0 : null,
                       ),
               ],
             ),
