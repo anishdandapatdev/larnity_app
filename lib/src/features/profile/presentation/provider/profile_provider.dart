@@ -22,6 +22,36 @@ class ProfileNotifier extends Notifier<ProfileState> {
     void Function()? successCallBack,
     void Function(String error)? failureCallBack,
   }) async {
+    final fName = user.firstName?.trim() ?? '';
+    final lName = user.lastName?.trim() ?? '';
+
+    if (fName.isEmpty) {
+      state = state.copyWith(
+        state: AsyncState.failure,
+        error: "First name cannot be empty",
+      );
+      failureCallBack?.call("First name cannot be empty");
+      return;
+    }
+
+    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(fName)) {
+      state = state.copyWith(
+        state: AsyncState.failure,
+        error: "First name can only contain letters",
+      );
+      failureCallBack?.call("First name can only contain letters");
+      return;
+    }
+
+    if (lName.isNotEmpty && !RegExp(r'^[a-zA-Z\s]+$').hasMatch(lName)) {
+      state = state.copyWith(
+        state: AsyncState.failure,
+        error: "Last name can only contain letters",
+      );
+      failureCallBack?.call("Last name can only contain letters");
+      return;
+    }
+
     final dataSource = ref.read(profileDataSourceProvider);
 
     state = state.copyWith(state: AsyncState.loading);

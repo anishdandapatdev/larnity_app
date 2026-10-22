@@ -321,7 +321,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       }
     });
 
-    final canPop = context.canPop();
+    bool canPop = false;
+    try {
+      canPop = context.canPop();
+    } catch (_) {
+      canPop = Navigator.of(context).canPop();
+    }
 
     return Scaffold(
       backgroundColor: AppColors.black,
@@ -331,7 +336,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         leading: canPop
             ? IconButton(
                 icon: const Icon(Icons.arrow_back, color: AppColors.white),
-                onPressed: () => context.pop(),
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    context.pop();
+                  }
+                },
               )
             : null,
         title: Text(
@@ -573,6 +584,22 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                     TextFormField(
                       controller: firstNameCtrl,
                       style: const TextStyle(color: Colors.white),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[a-zA-Z\s]'),
+                        ),
+                      ],
+                      validator: (value) {
+                        final val = value?.trim() ?? '';
+                        if (val.isEmpty) {
+                          return 'First name cannot be empty';
+                        }
+                        if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(val)) {
+                          return 'Only letters allowed';
+                        }
+                        return null;
+                      },
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: _inputDecoration("First name"),
                     ),
                   ],
@@ -591,6 +618,20 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                     TextFormField(
                       controller: lastNameCtrl,
                       style: const TextStyle(color: Colors.white),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[a-zA-Z\s]'),
+                        ),
+                      ],
+                      validator: (value) {
+                        final val = value?.trim() ?? '';
+                        if (val.isNotEmpty &&
+                            !RegExp(r'^[a-zA-Z\s]+$').hasMatch(val)) {
+                          return 'Only letters allowed';
+                        }
+                        return null;
+                      },
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: _inputDecoration("Last name"),
                     ),
                   ],
@@ -634,6 +675,27 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   const SnackBar(
                     backgroundColor: AppColors.red,
                     content: Text("First name cannot be empty"),
+                  ),
+                );
+                return;
+              }
+
+              if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(fName)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    backgroundColor: AppColors.red,
+                    content: Text("First name can only contain letters"),
+                  ),
+                );
+                return;
+              }
+
+              if (lName.isNotEmpty &&
+                  !RegExp(r'^[a-zA-Z\s]+$').hasMatch(lName)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    backgroundColor: AppColors.red,
+                    content: Text("Last name can only contain letters"),
                   ),
                 );
                 return;
@@ -840,6 +902,15 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: AppColors.primaryOrange, width: 1.2),
       ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.red, width: 1.2),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: AppColors.red, width: 1.4),
+      ),
+      errorStyle: const TextStyle(color: AppColors.red, fontSize: 11),
     );
   }
 }
