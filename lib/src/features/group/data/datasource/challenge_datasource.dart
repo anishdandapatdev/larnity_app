@@ -64,7 +64,7 @@ class ChallengeDataSource {
         response = await fallbackQuery.order('created_at', ascending: false);
       }
 
-      final challenges = (response as List)
+      final challenges = response
           .map((e) => ChallengeModel.fromMap(e as Map<String, dynamic>))
           .toList();
 

@@ -50,10 +50,21 @@ class _CreateChallengeState extends ConsumerState<CreateChallenge> {
     _secondPrizeController = TextEditingController();
     _thirdPrizeController = TextEditingController();
     _priceController = TextEditingController(text: "0");
+
+    _firstPrizeController.addListener(_onPrizeChanged);
+    _secondPrizeController.addListener(_onPrizeChanged);
+    _thirdPrizeController.addListener(_onPrizeChanged);
+  }
+
+  void _onPrizeChanged() {
+    setState(() {});
   }
 
   @override
   void dispose() {
+    _firstPrizeController.removeListener(_onPrizeChanged);
+    _secondPrizeController.removeListener(_onPrizeChanged);
+    _thirdPrizeController.removeListener(_onPrizeChanged);
     _titleController.dispose();
     _descController.dispose();
     _maxParticipantsController.dispose();
@@ -62,6 +73,49 @@ class _CreateChallengeState extends ConsumerState<CreateChallenge> {
     _thirdPrizeController.dispose();
     _priceController.dispose();
     super.dispose();
+  }
+
+  double? _parsePrizeAmount(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return null;
+    final cleaned = trimmed.replaceAll(RegExp(r'[^0-9.]'), '');
+    return double.tryParse(cleaned);
+  }
+
+  String? _validatePrizes() {
+    final first = _parsePrizeAmount(_firstPrizeController.text);
+    final second = _parsePrizeAmount(_secondPrizeController.text);
+    final third = _parsePrizeAmount(_thirdPrizeController.text);
+
+    final hasFirstText = _firstPrizeController.text.trim().isNotEmpty;
+    final hasSecondText = _secondPrizeController.text.trim().isNotEmpty;
+    final hasThirdText = _thirdPrizeController.text.trim().isNotEmpty;
+
+    if (!hasFirstText && (hasSecondText || hasThirdText)) {
+      return "1st prize is required when adding 2nd or 3rd prize";
+    }
+
+    if (!hasSecondText && hasThirdText) {
+      return "2nd prize is required when adding 3rd prize";
+    }
+
+    if (first != null && second != null && third != null && second > first && third > first) {
+      return "2nd and 3rd prizes cannot be higher than 1st prize";
+    }
+
+    if (first != null && second != null && second > first) {
+      return "2nd prize cannot be higher than 1st prize";
+    }
+
+    if (first != null && third != null && third > first) {
+      return "3rd prize cannot be higher than 1st prize";
+    }
+
+    if (second != null && third != null && third > second) {
+      return "3rd prize cannot be higher than 2nd prize";
+    }
+
+    return null;
   }
 
   Future<void> _pickImage() async {
@@ -89,6 +143,12 @@ class _CreateChallengeState extends ConsumerState<CreateChallenge> {
     final group = ref.read(groupProvider).group;
     if (group == null || group.id == null) {
       showErrorToast(content: "No active group found");
+      return;
+    }
+
+    final prizeValidationError = _validatePrizes();
+    if (prizeValidationError != null) {
+      showErrorToast(content: prizeValidationError);
       return;
     }
 
@@ -168,6 +228,27 @@ class _CreateChallengeState extends ConsumerState<CreateChallenge> {
 
   @override
   Widget build(BuildContext context) {
+    final firstPrizeAmt = _parsePrizeAmount(_firstPrizeController.text);
+    final secondPrizeAmt = _parsePrizeAmount(_secondPrizeController.text);
+    final thirdPrizeAmt = _parsePrizeAmount(_thirdPrizeController.text);
+
+    final isSecondInvalid = (firstPrizeAmt != null &&
+            secondPrizeAmt != null &&
+            secondPrizeAmt > firstPrizeAmt) ||
+        (_firstPrizeController.text.trim().isEmpty &&
+            _secondPrizeController.text.trim().isNotEmpty);
+
+    final isThirdInvalid = (firstPrizeAmt != null &&
+            thirdPrizeAmt != null &&
+            thirdPrizeAmt > firstPrizeAmt) ||
+        (secondPrizeAmt != null &&
+            thirdPrizeAmt != null &&
+            thirdPrizeAmt > secondPrizeAmt) ||
+        (_secondPrizeController.text.trim().isEmpty &&
+            _thirdPrizeController.text.trim().isNotEmpty);
+
+    final prizeError = _validatePrizes();
+
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -351,12 +432,18 @@ class _CreateChallengeState extends ConsumerState<CreateChallenge> {
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSizes.xxxs),
                           borderSide: BorderSide(
-                            color: AppColors.skyBlue.withValues(alpha: 0.4),
+                            color: isSecondInvalid
+                                ? Colors.redAccent
+                                : AppColors.skyBlue.withValues(alpha: 0.4),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                          borderSide: const BorderSide(color: AppColors.skyBlue),
+                          borderSide: BorderSide(
+                            color: isSecondInvalid
+                                ? Colors.redAccent
+                                : AppColors.skyBlue,
+                          ),
                         ),
                       ),
                     ),
@@ -384,12 +471,18 @@ class _CreateChallengeState extends ConsumerState<CreateChallenge> {
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSizes.xxxs),
                           borderSide: BorderSide(
-                            color: AppColors.skyBlue.withValues(alpha: 0.4),
+                            color: isThirdInvalid
+                                ? Colors.redAccent
+                                : AppColors.skyBlue.withValues(alpha: 0.4),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppSizes.xxxs),
-                          borderSide: const BorderSide(color: AppColors.skyBlue),
+                          borderSide: BorderSide(
+                            color: isThirdInvalid
+                                ? Colors.redAccent
+                                : AppColors.skyBlue,
+                          ),
                         ),
                       ),
                     ),
@@ -398,6 +491,29 @@ class _CreateChallengeState extends ConsumerState<CreateChallenge> {
               ),
             ],
           ),
+          if (prizeError != null) ...[
+            AppSizes.xxxs.ph,
+            Row(
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.redAccent,
+                  size: 14,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    prizeError,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           AppSizes.xs.ph,
           CheckboxListTile(
             value: _isPaid,

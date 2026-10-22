@@ -142,7 +142,9 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                 ],
               ),
               AppSizes.xxs.ph,
-              Row(
+              Wrap(
+                spacing: AppSizes.xxs,
+                runSpacing: AppSizes.xxs,
                 children: [
                   Chip(
                     label: Text(
@@ -152,8 +154,10 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                     backgroundColor: AppColors.bgBlue,
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   ),
-                  AppSizes.xxs.pw,
                   if (c.prize != null && c.prize!.isNotEmpty)
                     Chip(
                       label: Text(
@@ -161,6 +165,9 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                         style: const TextStyle(color: AppColors.primaryOrange, fontSize: 12),
                       ),
                       backgroundColor: AppColors.bgBlue,
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     ),
                 ],
               ),
@@ -313,6 +320,65 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
     }).toList();
   }
 
+  Widget _buildStatBox({
+    required Color borderColor,
+    required Color iconBgColor,
+    required dynamic icon,
+    required String label,
+    required String count,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(AppSizes.xs),
+        color: AppColors.darkBgContainer,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: BorderRadius.circular(AppSizes.xxxs),
+                ),
+                child: Center(
+                  child: HugeIcon(
+                    icon: icon,
+                    color: AppColors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+              Text(
+                count,
+                style: AppTextStyles.headline3(
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: AppTextStyles.caption2(
+              color: textColor,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final groupState = ref.watch(groupProvider);
@@ -435,167 +501,44 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                   ],
                 ),
               AppSizes.md.ph,
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSizes.xs),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.skyBlue),
-                        borderRadius: BorderRadius.circular(AppSizes.xs),
-                        color: AppColors.darkBgContainer,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.blue,
-                              borderRadius:
-                                  BorderRadius.circular(AppSizes.xxxs),
-                            ),
-                            child: const Center(
-                              child: HugeIcon(
-                                icon: HugeIconsStrokeRounded.champion,
-                                color: AppColors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          AppSizes.xxs.pw,
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  AppStrings.totalChallenges,
-                                  style: AppTextStyles.overLine(
-                                    color: AppColors.blue,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  "$totalCount",
-                                  style: AppTextStyles.headline2(
-                                    color: AppColors.blue,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _buildStatBox(
+                        borderColor: AppColors.skyBlue,
+                        iconBgColor: AppColors.blue,
+                        icon: HugeIconsStrokeRounded.champion,
+                        label: AppStrings.totalChallenges,
+                        count: "$totalCount",
+                        textColor: AppColors.blue,
                       ),
                     ),
-                  ),
-                  AppSizes.xxxs.pw,
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSizes.xs),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.green),
-                        borderRadius: BorderRadius.circular(AppSizes.xs),
-                        color: AppColors.darkBgContainer,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.green,
-                              borderRadius:
-                                  BorderRadius.circular(AppSizes.xxxs),
-                            ),
-                            child: const Center(
-                              child: HugeIcon(
-                                icon: HugeIconsStrokeRounded.calendar04,
-                                color: AppColors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          AppSizes.xxs.pw,
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  AppStrings.active,
-                                  style: AppTextStyles.overLine(
-                                    color: AppColors.green,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  "$activeCount",
-                                  style: AppTextStyles.headline2(
-                                    color: AppColors.green,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                    AppSizes.xxxs.pw,
+                    Expanded(
+                      child: _buildStatBox(
+                        borderColor: AppColors.green,
+                        iconBgColor: AppColors.green,
+                        icon: HugeIconsStrokeRounded.calendar04,
+                        label: AppStrings.active,
+                        count: "$activeCount",
+                        textColor: AppColors.green,
                       ),
                     ),
-                  ),
-                  AppSizes.xxxs.pw,
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSizes.xs),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.purple),
-                        borderRadius: BorderRadius.circular(AppSizes.xs),
-                        color: AppColors.darkBgContainer,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.purple,
-                              borderRadius:
-                                  BorderRadius.circular(AppSizes.xxxs),
-                            ),
-                            child: const Center(
-                              child: HugeIcon(
-                                icon: HugeIconsStrokeRounded.stars,
-                                color: AppColors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          AppSizes.xxs.pw,
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  AppStrings.liveNow,
-                                  style: AppTextStyles.overLine(
-                                    color: AppColors.purple,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  "$liveCount",
-                                  style: AppTextStyles.headline2(
-                                    color: AppColors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                    AppSizes.xxxs.pw,
+                    Expanded(
+                      child: _buildStatBox(
+                        borderColor: AppColors.purple,
+                        iconBgColor: AppColors.purple,
+                        icon: HugeIconsStrokeRounded.stars,
+                        label: AppStrings.liveNow,
+                        count: "$liveCount",
+                        textColor: AppColors.purple,
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               AppSizes.md.ph,
               TextFormField(
@@ -629,7 +572,7 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                   Expanded(
                     child: AppDropdown(
                       button: Container(
-                        padding: const EdgeInsets.all(AppSizes.xs),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                         decoration: BoxDecoration(
                           color: AppColors.darkBgContainer,
                           border: Border.all(
@@ -638,21 +581,28 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                           borderRadius: BorderRadius.circular(AppSizes.xs),
                         ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const HugeIcon(
                               icon: HugeIconsStrokeRounded.filter,
                               color: AppColors.white,
+                              size: 18,
                             ),
-                            Text(
-                              _selectedStatus,
-                              style: AppTextStyles.bodyText2(
-                                color: AppColors.white,
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _selectedStatus,
+                                style: AppTextStyles.caption1(
+                                  color: AppColors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(width: 4),
                             const Icon(
                               Icons.keyboard_arrow_down,
                               color: AppColors.white,
+                              size: 18,
                             ),
                           ],
                         ),
@@ -684,7 +634,7 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                   Expanded(
                     child: AppDropdown(
                       button: Container(
-                        padding: const EdgeInsets.all(AppSizes.xs),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                         decoration: BoxDecoration(
                           color: AppColors.darkBgContainer,
                           border: Border.all(
@@ -693,21 +643,28 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                           borderRadius: BorderRadius.circular(AppSizes.xs),
                         ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const HugeIcon(
                               icon: HugeIconsStrokeRounded.userMultiple02,
                               color: AppColors.white,
+                              size: 18,
                             ),
-                            Text(
-                              _selectedType,
-                              style: AppTextStyles.bodyText2(
-                                color: AppColors.white,
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _selectedType,
+                                style: AppTextStyles.caption1(
+                                  color: AppColors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(width: 4),
                             const Icon(
                               Icons.keyboard_arrow_down,
                               color: AppColors.white,
+                              size: 18,
                             ),
                           ],
                         ),
@@ -901,7 +858,10 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                               ),
                             ],
                             AppSizes.xs.ph,
-                            Row(
+                            Wrap(
+                              spacing: AppSizes.xxs,
+                              runSpacing: AppSizes.xxs,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 Chip(
                                   label: Text(
@@ -914,9 +874,11 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                                     ),
                                   ),
                                   backgroundColor: AppColors.bgBlue,
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 ),
-                                AppSizes.xxs.pw,
-                                if (c.prize != null)
+                                if (c.prize != null && c.prize!.isNotEmpty)
                                   Chip(
                                     label: Text(
                                       "Prize: ${c.prize}",
@@ -926,19 +888,31 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                                       ),
                                     ),
                                     backgroundColor: AppColors.bgBlue,
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                   ),
-                                const Spacer(),
-                                AppButton(
-                                  isExpanded: false,
-                                  onPressed: () => _showChallengeDetailsSheet(context, c, isOwnerOrAdmin, group.id!),
-                                  label: "View Challenge",
-                                  labelStyle: AppTextStyles.caption1(
-                                    color: Colors.black,
-                                  ),
-                                  bgColor: AppColors.primaryOrange,
-                                  radius: 4,
-                                ),
                               ],
+                            ),
+                            AppSizes.xs.ph,
+                            SizedBox(
+                              width: double.infinity,
+                              child: AppButton(
+                                height: 38,
+                                isExpanded: true,
+                                onPressed: () => _showChallengeDetailsSheet(
+                                  context,
+                                  c,
+                                  isOwnerOrAdmin,
+                                  group.id!,
+                                ),
+                                label: "View Challenge",
+                                labelStyle: AppTextStyles.caption1(
+                                  color: Colors.black,
+                                ),
+                                bgColor: AppColors.primaryOrange,
+                                radius: 4,
+                              ),
                             ),
                           ],
                         ),
@@ -946,6 +920,7 @@ class _ChallengeRoomScreenState extends ConsumerState<ChallengeRoomScreen> {
                     );
                   },
                 ),
+                AppSizes.xxlg.ph,
             ],
           ),
         ),
