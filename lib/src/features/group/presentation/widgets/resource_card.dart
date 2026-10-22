@@ -19,10 +19,47 @@ class ResourceCard extends ConsumerWidget {
 
   const ResourceCard({super.key, required this.resource});
 
-  Future<void> _launchUrl(String urlString) async {
-    final uri = Uri.tryParse(urlString);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+  Future<void> _launchUrl(BuildContext context, String urlString) async {
+    final trimmed = urlString.trim();
+    if (trimmed.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Resource link is not available')),
+        );
+      }
+      return;
+    }
+
+    var formattedUrl = trimmed;
+    if (!formattedUrl.toLowerCase().startsWith('http://') &&
+        !formattedUrl.toLowerCase().startsWith('https://')) {
+      formattedUrl = 'https://$formattedUrl';
+    }
+
+    final uri = Uri.tryParse(formattedUrl);
+    if (uri == null || uri.host.isEmpty || !uri.host.contains('.')) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid resource link: please check the resource URL'),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open resource link')),
+        );
+      }
     }
   }
 
@@ -140,15 +177,7 @@ class ResourceCard extends ConsumerWidget {
                 ),
                 AppSizes.xs.ph,
                 AppButton(
-                  onPressed: () {
-                    if (resource.resourceLink.isNotEmpty) {
-                      var url = resource.resourceLink;
-                      if (!url.startsWith('http')) {
-                        url = 'https://$url';
-                      }
-                      _launchUrl(url);
-                    }
-                  },
+                  onPressed: () => _launchUrl(context, resource.resourceLink),
                   label: AppStrings.access,
                   prefix: const HugeIcon(
                     icon: HugeIconsStrokeRounded.cloudDownload,

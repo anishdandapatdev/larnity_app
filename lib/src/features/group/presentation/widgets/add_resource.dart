@@ -65,9 +65,31 @@ class _AddResourceState extends ConsumerState<AddResource> {
     final name = _nameController.text.trim();
     final link = _linkController.text.trim();
 
-    if (name.isEmpty || link.isEmpty) {
+    if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields')),
+        const SnackBar(content: Text('Please enter a resource name')),
+      );
+      return;
+    }
+    if (link.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a resource link')),
+      );
+      return;
+    }
+
+    var formattedLink = link;
+    if (!formattedLink.toLowerCase().startsWith('http://') &&
+        !formattedLink.toLowerCase().startsWith('https://')) {
+      formattedLink = 'https://$formattedLink';
+    }
+
+    final parsedUri = Uri.tryParse(formattedLink);
+    if (parsedUri == null || parsedUri.host.isEmpty || !parsedUri.host.contains('.')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid website or document URL (e.g. drive.google.com/...)'),
+        ),
       );
       return;
     }
@@ -108,7 +130,7 @@ class _AddResourceState extends ConsumerState<AddResource> {
         groupId: groupId,
         resourceName: name,
         resourceImg: imageUrl,
-        resourceLink: link,
+        resourceLink: formattedLink,
       );
 
       ref.read(treasureProvider(groupId).notifier).addResource(
